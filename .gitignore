@@ -1,2 +1,7 @@
-
 *.asv
+*.mat
+*.jpg
+*.jpeg
+*.png
+*.fig
+.is_installed

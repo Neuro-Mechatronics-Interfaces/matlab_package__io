@@ -9,7 +9,7 @@ function repos = read_repos_list(repos_file)
 %                format:
 %                   
 %                   repositories:
-%                       folder1/repo1>:
+%                       folder1/repo1:
 %                           type: git
 %                           url: https://url/folder1/repo1.git
 %                           version: galactic

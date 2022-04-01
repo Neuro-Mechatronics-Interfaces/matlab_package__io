@@ -1,0 +1,10 @@
+repositories:
+	+TMSiSAGA:
+		type: git
+		url: git@github.com:Neuro-Mechatronics-Interfaces/TMSiSAGA_MATLAB.git
+		version: 0.0
+	+utils:
+		type: git
+		url: git@github.com:Neuro-Mechatronics-Interfaces/NHP_MATLAB_Utilities.git
+		version: 0.0
+		
