@@ -25,7 +25,7 @@ function offset = load_tmsi_triggers(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir)
 % Output:
 %   offset - Vector of sample indices where sync signal is observed.
 % 
-% See also: Contents, parse_bit_sync, sync_block
+% See also: Contents, io.load_tmsi_triggers, io.load_tmsi_raw
 
 if nargin < 7
     rootdir = utils.parameters('generated_data_folder');

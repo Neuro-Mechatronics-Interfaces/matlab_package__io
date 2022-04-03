@@ -27,7 +27,7 @@ function sync = load_sync(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir)
 %                       logic used by TMSi).
 %           - sync_data : The actual sync data vector.
 %
-% See also: Contents
+% See also: Contents, io.load_tmsi_raw, io.load_tmsi_triggers
 
 if nargin < 7
     rootdir = utils.parameters('generated_data_folder');

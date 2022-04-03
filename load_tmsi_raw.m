@@ -48,8 +48,8 @@ if ~isnumeric(BLOCK)
     BLOCK = str2double(BLOCK);
 end
 
-b = sprintf('%s_%4d_%02d_%02d', SUBJ, YYYY, MM, DD);
-str = fullfile(rootdir, SUBJ, b, sprintf('%s_%s_%d*', b, ARRAY, BLOCK));
+f = utils.get_block_name(SUBJ, YYYY, MM, DD, ARRAY, BLOCK);
+str = fullfile(f.Raw.Tank, sprintf('%s_%s_%d*', f.Tank, ARRAY, BLOCK));
 F = dir(str);
 if isempty(F)
     x = [];
@@ -58,11 +58,10 @@ if isempty(F)
     return;
 elseif numel(F) > 1
     iUse = nan;
-    test = sprintf('%s_%s_%d', b, ARRAY, BLOCK);
     for iF = 1:numel(F)
         tmp = strsplit(F(iF).name, '-');
         recname = strip(tmp{1});
-        if strcmpi(recname, test)
+        if strcmpi(recname, f.Block)
             iUse = iF;
             break;
         end
@@ -70,7 +69,7 @@ elseif numel(F) > 1
     if isnan(iUse)
         x = [];
         info = [];
-        fprintf(1, 'Multiple recordings match expression, but no exact match for: <strong>%s</strong>\n', test);
+        fprintf(1, 'Multiple recordings match expression, but no exact match for: <strong>%s</strong>\n', f.Block);
         return;
     end
 end
@@ -103,7 +102,7 @@ catch me
         rethrow(me);
     end
 end
-x.name = sprintf('%s_%s_%d', b, ARRAY, BLOCK);
+x.name = f.Block;
 
 if nargout > 1
     info = dir(full_fname);
