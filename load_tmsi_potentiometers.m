@@ -69,7 +69,7 @@ for ii = 1:2
     in = load(fullfile(f.Generated.Block, pars.raw_matfiles_folder, channels.name(data_channels(ii))));
     in.dimension = dims(ii);
     in.block = f.Block;
+    in.samples = in.samples - mean(in.samples);
     data = [data; in]; %#ok<AGROW>
 end
-
 end

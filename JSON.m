@@ -2,7 +2,7 @@ classdef JSON < dynamicprops
     %JSON Class to access contents of JSON file.
     %
     % Syntax:
-    %   params = JSON('params.json');
+    %   params = io.JSON('params.json');
     %   disp(params.color);
     %   >> "blue"
     
@@ -40,7 +40,11 @@ classdef JSON < dynamicprops
             
             self.file = file;
             if exist(self.file, 'file')==0
-                self.write(varargin{:});
+                for iV = 1:2:numel(varargin)
+                    self.addprop(varargin{iV});
+                    self.(varargin{iV}) = varargin{iV+1}; 
+                end
+                self.write(varargin{1:2:end});
             else
                 self.exists = true;
                 self.read(varargin{:});
@@ -132,15 +136,23 @@ classdef JSON < dynamicprops
                 if any(cellfun(@(C)~ismember(C, properties(self)), varargin))
                     error('JSON:BadPropertyName', 'All requested updates must be properties of JSON object!');
                 end
-                fid = fopen(self.file, 'r');
-                raw = fread(fid, inf);
-                str = char(raw');
-                fclose(fid);
-                val = jsondecode(str);
+                if exist(self.file, 'file')==0
+                    val = struct();
+                    for iV = 1:numel(varargin)
+                        val.(varargin{iV}) =  self.(varargin{iV});
+                    end
+                else
+                    fid = fopen(self.file, 'r');
+                    raw = fread(fid, inf);
+                    str = char(raw');
+                    fclose(fid);
+                    val = jsondecode(str);
+                end
                 F = fieldnames(val);
                 if any(cellfun(@(C)~ismember(C, F), varargin))
                     error('JSON:BadPropertyName', 'All optional inputs must match case and spelling of JSON fields exactly.');
                 end
+                
                 for iV = 1:numel(varargin)
                     idx = ismember(F, varargin{iV}); 
                     val.(F{idx}) = self.(varargin{iV});
