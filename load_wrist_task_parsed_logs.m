@@ -30,10 +30,13 @@ if nargin < 6
     expr = parameters('parsed_wrist_task_logs_expr');
 end
 [YYYY, MM, DD] = utils.parse_date_args(YYYY, MM, DD);
+YYYY = num2str(YYYY, '%04d');
+MM = num2str(MM, '%02d');
+DD = num2str(DD, '%02d');
 s = sprintf(expr, SUBJ, SUBJ, YYYY, MM, DD);
-fname = struct('Position', [s 'Wrist_Position.mat'], ...
-               'Logs', [s 'Wrist_Logs.mat'], ...
-               'Header', [s 'Wrist_Header.mat']);
+fname = struct('Position', strcat(s, 'Wrist_Position.mat'), ...
+               'Logs', strcat(s, 'Wrist_Logs.mat'), ...
+               'Header', strcat(s, 'Wrist_Header.mat'));
 
 tic;
 fprintf(1, 'Loading <strong>Position</strong> logs (%s)...', fname.Position);

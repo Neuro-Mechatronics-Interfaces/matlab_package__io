@@ -71,7 +71,11 @@ end
 
 
 [raw_logs_expr, parsed_logs_expr] = parameters('wrist_task_trial_logs_expr', 'parsed_wrist_task_logs_expr');
-filename_parsed = sprintf(parsed_logs_expr, SUBJ, SUBJ, YYYY, MM, DD
+filename_parsed = strcat(sprintf(parsed_logs_expr, SUBJ, SUBJ, YYYY, MM, DD), 'Wrist_Position.mat');
+if (exist(filename_parsed, 'file')~=0) && (nargout <= 3)
+     [Position, Logs, Header] = io.load_wrist_task_parsed_logs(SUBJ, YYYY, MM, DD);
+     return;
+end
 filename_raw = sprintf(raw_logs_expr, SUBJ, SUBJ, YYYY, MM, DD);
 F = dir(filename_raw);
 if isempty(F)
