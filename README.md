@@ -45,6 +45,7 @@ These most-likely only work if run specifically from a submodule initialized in 
 
 
   `load_wrist_task_parameters`         - Import logging parameters for a given subject.  
+  `load_wrist_task_parsed_logs`        - Load parsed position/logs/header data.  
   `load_wrist_task_training_summary`   - Reads table of training history.  
   `load_wrist_task_raw_logs`           - Import data from a text file.  
   `load_wrist_task_trial_data`         - Import data from a trial .txt file.  

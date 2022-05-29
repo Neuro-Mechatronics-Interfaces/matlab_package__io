@@ -3,15 +3,38 @@ function [Position, Logs, Header, Trial, State, Target, Outcome, Haptics] = load
 %
 % Syntax:
 %   [Position, Logs, Trial, State, Target, Outcome, Haptics] = io.load_wrist_task_trial_logs(SUBJ, YYYY, MM, DD);
+%   [Position, Logs, Trial, State, Target, Outcome, Haptics] = io.load_wrist_task_trial_logs(f);
 %
 % Example:
 %  [Position, Logs, Trial, State, Target, Outcome, Haptics] = ...
 %       io.load_wrist_task_trial_logs("Rupert", 2021, 09, 10);
 %
-% v0.1 2021-09-11
-% v1.0 2021-10-12
-% v2.0 2021-10-17
-% v2.1 2022-05-29 -- Moved to +io submodule
+% Notes:
+%   v0.1 2021-09-11
+%   v1.0 2021-10-12
+%   v2.0 2021-10-17
+%   v2.1 2022-05-29 -- Moved to +io submodule
+%
+% Inputs:
+%   SUBJ - Subject name (char array or string)
+%   YYYY - Year (4-digit year char array or string, or double)
+%   MM - Month (2-digit month char array or string, or double)
+%   DD - Day (2-digit day char array or string, or double)
+%
+%   -- or --
+%   f   - Struct returned by `utils.get_block_name`
+%
+% Outputs:
+%   Trial   - Timetable with columns related to Trial outcome/type info.
+%   State   - Timetable with columns related to task State info.
+%   Header  - Header struct with metaparameters about the behavior session.
+%   Target  - Timetable with columns related to the Target angle.
+%   Outcome - Timetable with columns related to the Outcome for each trial.
+%   Haptics - Timetable with columns that have are related to any haptic buzz events.
+%   Logs    - Formatted version of input timetable.
+%
+% See also: Contents, io.parse_wrist_task_trials,
+%               io.save_parsed_wrist_task_logs
 
 % Input handling
 if nargin < 4
@@ -47,11 +70,12 @@ else
 end
 
 
-txt_str = parameters('wrist_task_trial_logs_expr');
-filename = sprintf(txt_str, SUBJ, SUBJ, YYYY, MM, DD);
-F = dir(filename);
+[raw_logs_expr, parsed_logs_expr] = parameters('wrist_task_trial_logs_expr', 'parsed_wrist_task_logs_expr');
+filename_parsed = sprintf(parsed_logs_expr, SUBJ, SUBJ, YYYY, MM, DD
+filename_raw = sprintf(raw_logs_expr, SUBJ, SUBJ, YYYY, MM, DD);
+F = dir(filename_raw);
 if isempty(F)
-    error('Could not find any files matching string\n\t->\t <strong>%s</strong> <-\n', filename);
+    error('Could not find any files matching string\n\t->\t <strong>%s</strong> <-\n', filename_raw);
 end
 [~, idx] = sort(string(vertcat(F.date)), 'ascend');
 F = F(idx);
