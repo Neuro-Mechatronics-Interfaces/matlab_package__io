@@ -62,7 +62,7 @@ if (numel(ARRAY) > 1) || (numel(BLOCK) > 1)
     return;
 end
 
-[yyyy, mm, dd] = utils.parse_date_args(YYYY, MM, DD);
+[YYYY, MM, DD] = utils.parse_date_args(YYYY, MM, DD);
 if ~isnumeric(BLOCK)
     BLOCK = str2double(BLOCK);
 end
@@ -80,6 +80,8 @@ load(f.Generated.Meta, 'header', 'channels');
 [b, a] = butter(pars.ford, pars.fc/(header.sample_rate/2), 'high'); % emg
 [bp, ap] = butter(pars.ford, pars.fc/(header.sample_rate/2), 'low'); % potentiometers
 array = cell(size(event));
+array_sd = cell(size(event));
+array_dd = cell(size(event));
 pot = cell(size(event));
 bip = cell(size(event));
 iUni = contains(channels.alternative_name, 'UNI');
@@ -95,6 +97,16 @@ for ii = 1:nTrial
     
     array{ii} = filtfilt(b, a, data(:, iUni));
     array{ii} = array{ii} - mean(array{ii}, 2);
+    
+    % Permute into grid
+    ns = numel(t);
+    tmp_grid = reshape(array{ii}, ns, 8, 8);
+    g_sd = cat(2, nan(ns, 1, 8), diff(tmp_grid, 1, 2));
+    g_dd = cat(2, nan(ns, 1, 8), diff(tmp_grid, 2, 2), nan(ns, 1, 8));
+    
+    array_sd{ii} = reshape(g_sd, ns, 64);
+    array_dd{ii} = reshape(g_dd, ns, 64);
+    
     if sum(iBip) > 0
         bip{ii} = filtfilt(b, a, data(:, iBip));
     end
@@ -105,7 +117,7 @@ for ii = 1:nTrial
     fprintf(1, '\b\b\b\b\b%3d%%\n', round(ii * 100 / nTrial));
 end
 outcome = reshape([event.Outcome], numel(event), 1);
-target = table(trial, outcome, event, array, bip, pot);
+target = table(trial, outcome, event, array, array_sd, array_dd, bip, pot);
 target.Properties.UserData = struct('header', header, 't', t, 'channels', channels);
           
 end
