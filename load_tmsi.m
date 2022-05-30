@@ -1,11 +1,11 @@
 function [x, info] = load_tmsi(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, type, rootdir)
-%LOAD_TMSI  Loads "raw" data block that was saved via TMSiServer MATLAB API
+%LOAD_TMSI  API access-point for `load_tmsi_mat` or `load_tmsi_raw`. 
 %
 % Syntax:
 %   [x, info] = io.load_tmsi(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, type, rootdir);
 %
 % Example:
-%   x = io.load_tmsi_mat('Ollie', 2021, 11, 4, "B", 16);
+%   x = io.load_tmsi('Ollie', 2021, 11, 4, "B", 16);
 %   % This would return block 97 with array "B" data. Specify "*" to return
 %   %  either block.
 %
