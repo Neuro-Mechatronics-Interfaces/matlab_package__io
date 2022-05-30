@@ -6,6 +6,7 @@
 % Functions
 %   batch_import_modules               - Use `repos` struct to init a bunch of git submodules.
 %   batch_import_repos                 - Use `repos` struct to clone bunch of git repos.
+%   load_muscle_map                    - Loads JSON muscle map object.
 %   load_sync                          - Loads processed sync data.
 %   read_repos_list                    - Get list of all repos in `.repos` file.
 % 
