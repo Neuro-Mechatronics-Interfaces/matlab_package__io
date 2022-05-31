@@ -43,6 +43,10 @@ function target = load_aligned_target_data(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, ALI
 pars = struct;
 pars.fc = 10;  % Hz
 pars.ford = 4; % Highpass butterworth filter order
+pars.n_max = inf; % Set to scalar value to limit max number imported
+pars.filters = struct; % Set to struct with field names that match fields of `T` (the indexing variable in mat file of corresponding ".aligned" folder).
+% -> "Target" and "Direction" are added to this struct automatically using
+%       the input arguments TARGET and DIRECTION.
 [pars.rootdir_raw, pars.rootdir_gen, pars.raw_matfiles_folder, ...
     pars.raw_matfiles_expr, pars.events_file_expr, pars.meta_file_expr,...
     pars.alignment_parent_folder, pars.alignment_folder] = utils.parameters(...
@@ -71,26 +75,43 @@ if ~isfield(f.Generated.Aligned, ALIGNMENT)
     error("Export:UnhandledState", "This alignment state is not yet handled: <strong>%s</strong>\n\n", string(ALIGNMENT));
 end
 
-T = getfield(load(fullfile(f.Generated.Aligned.(ALIGNMENT), sprintf("%s.mat", f.Block)), 'T'), 'T');
-iTrial = find((TaskTarget([T.Target]) == TaskTarget(TARGET)) & ...
-              (TaskDirection([T.Direction]) == TaskDirection(DIRECTION)));
+% Load events for selected alignment
+T = getfield(load(fullfile(f.Generated.Aligned.(ALIGNMENT), ...
+    sprintf("%s.mat", f.Block)), 'T'), 'T');
+
+% Get subset of all aligned events
+idx = true(1, numel(T));
+pars.filters.Target = TARGET;
+pars.filters.Direction = DIRECTION;
+filter_fields = fieldnames(pars.filters);
+for iF = 1:numel(filter_fields)
+    idx = idx & ismember([T.(filter_fields{iF})], pars.filters.(filter_fields{iF}));
+end
+iTrial = find(idx);
 
 event = T(iTrial);
 load(f.Generated.Meta, 'header', 'channels');
 [b, a] = butter(pars.ford, pars.fc/(header.sample_rate/2), 'high'); % emg
 [bp, ap] = butter(pars.ford, pars.fc/(header.sample_rate/2), 'low'); % potentiometers
-array = cell(size(event));
-array_sd = cell(size(event));
-array_dd = cell(size(event));
-pot = cell(size(event));
-bip = cell(size(event));
+
 iUni = contains(channels.alternative_name, 'UNI');
 iBip = contains(channels.alternative_name, 'BIP');
 iPot = contains(channels.alternative_name, 'ISO');
 
 fprintf(1, 'Loading target-aligned data...  0%%\n');
-nTrial = numel(iTrial);
+nTrial = min(numel(iTrial), pars.n_max);
+iTrial = iTrial(1:nTrial);
+event = event(1:nTrial);
 trial = reshape(iTrial, nTrial, 1);
+
+array = cell(size(event));
+array_sd = cell(size(event));
+array_dd = cell(size(event));
+pot = cell(size(event));
+pot_raw = cell(size(event));
+pot_hpf = cell(size(event));
+bip = cell(size(event));
+
 for ii = 1:nTrial
     fname = fullfile(f.Generated.Aligned.(ALIGNMENT), sprintf("%s_%04d.mat", f.Block, iTrial(ii)));
     load(fname, 'data', 't');
@@ -112,12 +133,14 @@ for ii = 1:nTrial
     end
     
     if sum(iPot) > 0
-        pot{ii} = filtfilt(bp, ap, data(:, iPot));
+        pot_raw{ii} = data(:, iPot);
+        pot{ii} = filtfilt(bp, ap, pot_raw{ii});
+        pot_hpf{ii} = filtfilt(b, a, pot_raw{ii});
     end
     fprintf(1, '\b\b\b\b\b%3d%%\n', round(ii * 100 / nTrial));
 end
 outcome = reshape([event.Outcome], numel(event), 1);
-target = table(trial, outcome, event, array, array_sd, array_dd, bip, pot);
+target = table(trial, outcome, event, array, array_sd, array_dd, bip, pot, pot_hpf, pot_raw);
 target.Properties.UserData = struct('header', header, 't', t, 'channels', channels);
           
 end
