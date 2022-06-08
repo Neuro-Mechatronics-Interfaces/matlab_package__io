@@ -1,5 +1,5 @@
 function data = load_tmsi_potentiometers(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, varargin)
-%LOAD_TMSI_RAW Loads raw data block
+%LOAD_TMSI_POTENTIOMETERS  Loads potentiometer data specifically.
 %
 % Syntax:
 %   data = io.load_tmsi_potentiometers(SUBJ, YYYY, MM, DD, ARRAY, BLOCK);

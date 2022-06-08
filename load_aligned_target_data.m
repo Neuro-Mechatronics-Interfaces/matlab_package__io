@@ -89,7 +89,7 @@ for iF = 1:numel(filter_fields)
 end
 iTrial = find(idx);
 
-event = T(iTrial);
+events = T(iTrial);
 load(f.Generated.Meta, 'header', 'channels');
 [b, a] = butter(pars.ford, pars.fc/(header.sample_rate/2), 'high'); % emg
 [bp, ap] = butter(pars.ford, pars.fc/(header.sample_rate/2), 'low'); % potentiometers
@@ -101,20 +101,21 @@ iPot = contains(channels.alternative_name, 'ISO');
 fprintf(1, 'Loading target-aligned data...  0%%\n');
 nTrial = min(numel(iTrial), pars.n_max);
 iTrial = iTrial(1:nTrial);
-event = event(1:nTrial);
+events = events(1:nTrial);
 trial = reshape(iTrial, nTrial, 1);
 
-array = cell(size(event));
-array_sd = cell(size(event));
-array_dd = cell(size(event));
-pot = cell(size(event));
-pot_raw = cell(size(event));
-pot_hpf = cell(size(event));
-bip = cell(size(event));
+array = cell(size(events));
+array_sd = cell(size(events));
+array_dd = cell(size(events));
+pot = cell(size(events));
+pot_raw = cell(size(events));
+pot_hpf = cell(size(events));
+bip = cell(size(events));
+e = cell(size(events));
 
 for ii = 1:nTrial
     fname = fullfile(f.Generated.Aligned.(ALIGNMENT), sprintf("%s_%04d.mat", f.Block, iTrial(ii)));
-    load(fname, 'data', 't');
+    load(fname, 'data', 't', 'event');
     
     array{ii} = filtfilt(b, a, data(:, iUni));
     array{ii} = array{ii} - mean(array{ii}, 2);
@@ -137,10 +138,12 @@ for ii = 1:nTrial
         pot{ii} = filtfilt(bp, ap, pot_raw{ii});
         pot_hpf{ii} = filtfilt(b, a, pot_raw{ii});
     end
+    e{ii} = event;
     fprintf(1, '\b\b\b\b\b%3d%%\n', round(ii * 100 / nTrial));
 end
-outcome = reshape([event.Outcome], numel(event), 1);
-target = table(trial, outcome, event, array, array_sd, array_dd, bip, pot, pot_hpf, pot_raw);
+outcome = reshape([events.Outcome], numel(events), 1);
+event = events;
+target = table(trial, outcome, event, e, array, array_sd, array_dd, bip, pot, pot_hpf, pot_raw);
 target.Properties.UserData = struct('header', header, 't', t, 'channels', channels);
           
 end
