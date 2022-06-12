@@ -112,7 +112,7 @@ pot_raw = cell(size(events));
 pot_hpf = cell(size(events));
 bip = cell(size(events));
 e = cell(size(events));
-
+t = [];
 for ii = 1:nTrial
     fname = fullfile(f.Generated.Aligned.(ALIGNMENT), sprintf("%s_%04d.mat", f.Block, iTrial(ii)));
     load(fname, 'data', 't', 'event');
