@@ -33,7 +33,7 @@ end
 YYYY = num2str(YYYY, '%04d');
 MM = num2str(MM, '%02d');
 DD = num2str(DD, '%02d');
-s = sprintf(expr, SUBJ, SUBJ, YYYY, MM, DD);
+s = sprintf(strrep(expr, '\', '/'), SUBJ, SUBJ, YYYY, MM, DD);
 fname = struct('Position', strcat(s, 'Wrist_Position.mat'), ...
                'Logs', strcat(s, 'Wrist_Logs.mat'), ...
                'Header', strcat(s, 'Wrist_Header.mat'));

@@ -32,6 +32,7 @@ function data = load_tmsi_potentiometers(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, varar
 
 % % Handle parameters % %
 pars = struct;
+pars.dims = ["x", "y"];
 [pars.rootdir_gen, pars.raw_matfiles_folder, pars.raw_matfiles_expr, ...
     pars.meta_file_expr] = ...
     utils.parameters('generated_data_folder', 'raw_matfiles_folder', ...
@@ -64,10 +65,10 @@ if numel(data_channels)~=2
 end
 
 data = [];
-dims = ["x", "y"];
-for ii = 1:2
+
+for ii = 1:numel(pars.dims)
     in = load(fullfile(f.Generated.Block, pars.raw_matfiles_folder, channels.name(data_channels(ii))));
-    in.dimension = dims(ii);
+    in.dimension = pars.dims(ii);
     in.block = f.Block;
     in.samples = in.samples - mean(in.samples);
     data = [data; in]; %#ok<AGROW>
