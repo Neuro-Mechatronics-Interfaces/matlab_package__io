@@ -48,9 +48,12 @@ mname = fullfile(f.Raw.Subj, sprintf("%s_Muscle-Map.json", f.Block));
 if exist(mname, 'file') == 0
     mname = fullfile(f.Raw.Subj, sprintf("%s_%s_Muscle-Map.json", f.Tank, ARRAY));
     if exist(mname, 'file') == 0
-        warning("No muscle map found (looked for file: <strong>%s</strong>)\n", mname);
-        m = [];
-        return;
+        mname = fullfile(f.Raw.Subj, sprintf("%s_Muscle-Map_%s.json", f.Tank, ARRAY));
+        if exist(mname, 'file') == 0
+            warning("No muscle map found (looked for file: <strong>%s</strong>)\n", mname);
+            m = [];
+            return;
+        end
     end
 end
 tic;
