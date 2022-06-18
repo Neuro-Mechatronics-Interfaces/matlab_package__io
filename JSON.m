@@ -116,6 +116,26 @@ classdef JSON < dynamicprops
             end
         end
         
+        function update(self, varargin)
+            %UPDATE  Updates set of 'Name', value properties
+            %
+            % Syntax:
+            %   json_obj.update('Field1', Value1, ...);
+            %
+            % Inputs:
+            %   varargin - <'Name', Value> pairs corresponding to existing
+            %               property fields in io.JSON object.
+            %
+            % Updates those properties to the new values.
+            for iV = 1:2:numel(varargin)
+                if isprop(self, varargin{iV})
+                    self.(varargin{iV}) = varargin{iV+1};
+                else
+                    error("JSON:BadPropertyName", "<strong>%s</strong> is not a property of this JSON object.", varargin{iV}); 
+                end
+            end
+        end
+        
         function write(self, varargin)
             %WRITE  Write data from the dynamic properties into a file.
             %

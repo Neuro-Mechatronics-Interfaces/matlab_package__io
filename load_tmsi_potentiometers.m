@@ -39,6 +39,10 @@ pars.dims = ["x", "y"];
                      'raw_matfiles_expr', 'meta_file_expr'); % Filename of the *.json file defining MSB and LSB for each piece of information encoded in the task bit output.
 pars = utils.parse_parameters(pars, varargin{:});
 
+if isstruct(SUBJ)
+    [SUBJ, YYYY, MM, DD, ARRAY, BLOCK] = utils.get_subj_query(SUBJ); 
+end
+
 if (numel(BLOCK) > 1) || (numel(ARRAY) > 1)
     data = cell(numel(BLOCK), numel(ARRAY));
     for iB = 1:numel(BLOCK)

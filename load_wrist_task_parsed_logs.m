@@ -26,10 +26,15 @@ function [Position, Logs, Header] = load_wrist_task_parsed_logs(SUBJ, YYYY, MM, 
 %           io.load_wrist_task_trial_logs, io.parse_wrist_task_trials
 
 
-if nargin < 6
+if nargin < 5
     expr = parameters('parsed_wrist_task_logs_expr');
 end
-[YYYY, MM, DD] = utils.parse_date_args(YYYY, MM, DD);
+
+if isstruct(SUBJ)
+    [SUBJ, YYYY, MM, DD] = utils.get_subj_query(SUBJ);
+else
+    [YYYY, MM, DD] = utils.parse_date_args(YYYY, MM, DD);
+end
 YYYY = num2str(YYYY, '%04d');
 MM = num2str(MM, '%02d');
 DD = num2str(DD, '%02d');
