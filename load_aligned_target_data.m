@@ -49,7 +49,7 @@ pars.filters = struct; % Set to struct with field names that match fields of `T`
 %       the input arguments TARGET and DIRECTION.
 [pars.rootdir_raw, pars.rootdir_gen, pars.raw_matfiles_folder, ...
     pars.raw_matfiles_expr, pars.events_file_expr, pars.meta_file_expr,...
-    pars.alignment_parent_folder, pars.alignment_folder] = utils.parameters(...
+    pars.alignment_parent_folder, pars.alignment_folder] = parameters(...
         'raw_data_folder', 'generated_data_folder', 'raw_matfiles_folder', ...
         'raw_matfiles_expr', 'events_file_expr', 'meta_file_expr', ...
         'alignment_parent_folder', 'alignment_folder');
@@ -89,7 +89,6 @@ for iF = 1:numel(filter_fields)
 end
 iTrial = find(idx);
 
-events = T(iTrial);
 load(f.Generated.Meta, 'header', 'channels');
 [b, a] = butter(pars.ford, pars.fc/(header.sample_rate/2), 'high'); % emg
 [bp, ap] = butter(pars.ford, pars.fc/(header.sample_rate/2), 'low'); % potentiometers
@@ -98,10 +97,16 @@ iUni = contains(channels.alternative_name, 'UNI');
 iBip = contains(channels.alternative_name, 'BIP');
 iPot = contains(channels.alternative_name, 'ISO');
 
-fprintf(1, 'Loading target-aligned data...  0%%\n');
+
 nTrial = min(numel(iTrial), pars.n_max);
+if nTrial == 0
+    target = [];
+    fprintf(1, 'No trials identified; <strong>loading skipped</strong>...\n');
+    return;
+end
+fprintf(1, 'Loading target-aligned data...  0%%\n');
 iTrial = iTrial(1:nTrial);
-events = events(1:nTrial);
+events = T(iTrial);
 trial = reshape(iTrial, nTrial, 1);
 
 array = cell(size(events));
@@ -112,10 +117,12 @@ pot_raw = cell(size(events));
 pot_hpf = cell(size(events));
 bip = cell(size(events));
 e = cell(size(events));
+tc = repmat(datetime('now', 'TimeZone', 'America/New_York'), size(events));
+m = cell(size(events));
 t = [];
 for ii = 1:nTrial
     fname = fullfile(f.Generated.Aligned.(ALIGNMENT), sprintf("%s_%04d.mat", f.Block, iTrial(ii)));
-    load(fname, 'data', 't', 'event');
+    load(fname, 'data', 't', 'event', 'tCur', 'movement');
     
     array{ii} = filtfilt(b, a, data(:, iUni));
     array{ii} = array{ii} - mean(array{ii}, 2);
@@ -139,11 +146,13 @@ for ii = 1:nTrial
         pot_hpf{ii} = filtfilt(b, a, pot_raw{ii});
     end
     e{ii} = event;
+    tc(ii) = tCur;
+    m{ii} = movement;
     fprintf(1, '\b\b\b\b\b%3d%%\n', round(ii * 100 / nTrial));
 end
 outcome = reshape([events.Outcome], numel(events), 1);
 event = events;
-target = table(trial, outcome, event, e, array, array_sd, array_dd, bip, pot, pot_hpf, pot_raw);
+target = table(tc, trial, outcome, event, e, m, array, array_sd, array_dd, bip, pot, pot_hpf, pot_raw);
 target.Properties.UserData = struct('header', header, 't', t, 'channels', channels);
           
 end
