@@ -119,6 +119,7 @@ bip = cell(size(events));
 e = cell(size(events));
 tc = repmat(datetime('now', 'TimeZone', 'America/New_York'), size(events));
 m = cell(size(events));
+outcome = TaskOutcome(ones(size(events)).*-1);
 t = [];
 for ii = 1:nTrial
     fname = fullfile(f.Generated.Aligned.(ALIGNMENT), sprintf("%s_%04d.mat", f.Block, iTrial(ii)));
@@ -148,9 +149,16 @@ for ii = 1:nTrial
     e{ii} = event;
     tc(ii) = tCur;
     m{ii} = movement;
+    iComplete = find(event.State == TaskState.COMPLETE);    
+    if numel(iComplete) > 1
+        [~, i_complete_this_trial] = min(abs(tCur - event.Time(iComplete)));
+        outcome(ii) = event.Outcome(iComplete(i_complete_this_trial));
+    elseif numel(iComplete) == 1
+        outcome(ii) = event.Outcome(iComplete);
+    end
     fprintf(1, '\b\b\b\b\b%3d%%\n', round(ii * 100 / nTrial));
 end
-outcome = reshape([events.Outcome], numel(events), 1);
+% outcome = reshape([events.Outcome], numel(events), 1);
 event = events;
 target = table(tc, trial, outcome, event, e, m, array, array_sd, array_dd, bip, pot, pot_hpf, pot_raw);
 target.Properties.UserData = struct('header', header, 't', t, 'channels', channels);
