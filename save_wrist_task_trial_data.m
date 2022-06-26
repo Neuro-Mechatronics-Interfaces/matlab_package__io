@@ -21,7 +21,7 @@ else
 end
 meta = TrialData.Properties.UserData(1, :);
 
-fname = sprintf(SAVE_EXPR, meta.Subject, meta.Subject, meta.Year, meta.Month, meta.Day);
+fname = sprintf(strrep(SAVE_EXPR, "\", "/"), meta.Subject, meta.Subject, meta.Year, meta.Month, meta.Day);
 
 tic;
 fprintf(1, 'Saving <strong>TrialData</strong> table (%s)...', fname);
