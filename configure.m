@@ -56,7 +56,12 @@ end
 
 if pars.set_potentiometers
     [Position, ~, Header] = io.load_wrist_task_trial_logs(f);
-    P = @(param)pars_table_wrapper(Position.Properties.CustomProperties.Parameters{1}, param);
+    if iscell(Position.Properties.CustomProperties.Parameters{1})
+        PTab = Position.Properties.CustomProperties.Parameters{1}{1};
+    else
+        PTab = Position.Properties.CustomProperties.Parameters{1}; 
+    end
+    P = @(param)pars_table_wrapper(PTab, param);
 
     gx = str2double(P('X POSITION Gain'));
     gy = str2double(P('Y POSITION Gain'));
