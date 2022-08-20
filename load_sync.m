@@ -44,13 +44,9 @@ if (numel(ARRAY) > 1) || (numel(BLOCK) > 1)
     return;
 end
 
-[yyyy, mm, dd] = utils.parse_date_args(YYYY, MM, DD);
-if ~isnumeric(BLOCK)
-    BLOCK = str2double(BLOCK);
-end
-
-name = sprintf('%s_%04d_%02d_%02d', SUBJ, yyyy, mm, dd);
-sync = load(sprintf('%s/%s/%s/%d/%s_%s_%d_sync.mat', rootdir, SUBJ, name, BLOCK, name, ARRAY, BLOCK));
+f = utils.get_block_name(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, ...
+    'rootdir_gen', rootdir);
+sync = load(f.Generated.Sync);
 
 % Fix mismatch in pairs of stim start/stop pairs
 if numel(sync.offset) > numel(sync.onset)

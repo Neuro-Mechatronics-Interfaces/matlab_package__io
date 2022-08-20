@@ -42,7 +42,7 @@ if ~isnumeric(BLOCK)
     BLOCK = str2double(BLOCK);
 end
 
-f = utils.get_block_name(SUBJ, YYYY, MM, DD, ARRAY, BLOCK);
+f = utils.get_block_name(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, 'rootdir_raw', rootdir);
 % Check a couple ways it could be named by default:
 mname = fullfile(f.Raw.Subj, sprintf("%s_Muscle-Map.json", f.Block));
 if exist(mname, 'file') == 0
