@@ -33,10 +33,15 @@ function data = load_tmsi_potentiometers(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, varar
 % % Handle parameters % %
 pars = struct;
 pars.dims = ["x", "y"];
-[pars.rootdir_gen, pars.raw_matfiles_folder, pars.raw_matfiles_expr, ...
+[pars.rootdir_gen, ...
+    pars.raw_matfiles_folder, ...
+    pars.raw_matfiles_expr, ...
     pars.meta_file_expr] = ...
-    utils.parameters('generated_data_folder', 'raw_matfiles_folder', ...
-                     'raw_matfiles_expr', 'meta_file_expr'); % Filename of the *.json file defining MSB and LSB for each piece of information encoded in the task bit output.
+        parameters(...
+            'generated_data_folder', ...
+            'raw_matfiles_folder', ...
+            'raw_matfiles_expr', ...
+            'meta_file_expr'); % Filename of the *.json file defining MSB and LSB for each piece of information encoded in the task bit output.
 pars = utils.parse_parameters(pars, varargin{:});
 
 if isstruct(SUBJ)
@@ -65,8 +70,21 @@ load(meta_file, 'channels');
 
 data_channels = find(strcmpi(channels.alternative_name, 'ISO aux'));
 if numel(data_channels)~=2
-    error("LoadPotentiometers:WrongNumberChannels", "Should exist 2 channels with name ISO aux, instead found %d channels with that name!", numel(data_channels));
+    if strcmpi(ARRAY, "B")
+        ARRAY_COMPLEMENT = "A"; 
+    else
+        ARRAY_COMPLEMENT = "B";
+    end
+    f = utils.get_block_name(SUBJ, YYYY, MM, DD, ARRAY_COMPLEMENT, BLOCK);
+    meta_file = fullfile(f.Generated.Block, sprintf(pars.meta_file_expr, f.Block));
+    load(meta_file, 'channels');
+
+    data_channels = find(strcmpi(channels.alternative_name, 'ISO aux'));
+    if numel(data_channels)~=2
+        error("LoadPotentiometers:WrongNumberChannels", "Should exist 2 channels with name ISO aux, instead found %d channels with that name!", numel(data_channels));
+    end
 end
+    
 
 data = [];
 
@@ -74,7 +92,7 @@ for ii = 1:numel(pars.dims)
     in = load(fullfile(f.Generated.Block, pars.raw_matfiles_folder, channels.name(data_channels(ii))));
     in.dimension = pars.dims(ii);
     in.block = f.Block;
-    in.samples = in.samples - mean(in.samples);
+    in.samples = in.samples - median(in.samples);
     data = [data; in]; %#ok<AGROW>
 end
 end

@@ -159,21 +159,21 @@ switch upper(TYPE)
         end  
         return;
     case "COUNTER"
-        INDEX = find(contains(channel.type), "COUNTER", 1, 'first');
+        INDEX = find(contains(channel.type, "COUNTER"), 1, 'first');
         if isempty(INDEX)
             error("LoadChannels:MissingType", ...
                 "No match for TYPE == '%s' in this data record", ...
                 upper(TYPE));
         end
     case "STATUS"
-        INDEX = find(contains(channel.type), "STATUS", 1, 'first');
+        INDEX = find(contains(channel.type, "STATUS"), 1, 'first');
         if isempty(INDEX)
             error("LoadChannels:MissingType", ...
                 "No match for TYPE == '%s' in this data record", ...
                 upper(TYPE));
         end
     case {"POT", "POTENTIOMETER", "ISO", "AUX"}
-        INDEX = find(contains(channel.type), "ISO");
+        INDEX = find(contains(channel.type, "ISO"));
         if isempty(INDEX)
             error("LoadChannels:MissingType", ...
                 "No match for TYPE == '%s' in this data record", ...
@@ -188,7 +188,7 @@ switch upper(TYPE)
         end        
         return;
     case {"TRIGGER", "TRIGGERS"}
-        INDEX = find(contains(channels.type), "TRIGGER", 1, 'first');
+        INDEX = find(contains(channels.type, "TRIGGER"), 1, 'first');
         if isempty(INDEX)
             error("LoadChannels:MissingType", ...
                 "No match for TYPE == '%s' in this data record", ...

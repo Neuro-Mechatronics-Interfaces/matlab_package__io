@@ -45,16 +45,13 @@ iSession = 1;
 iTrial = -inf;
 Position.parameters_index = nan(size(Position, 1), 1);
 for iRow = 1:size(Position, 1)
-    if Position.trial_number < iTrial
+    if Position.trial_number(iRow) < iTrial
         iSession = iSession + 1;
     end
     iTrial = Position.trial_number(iRow);
     session_key = SESSION(P.session_index == iSession);
     idx = (TrialData.Session == session_key) & (TrialData.Trial_Number == iTrial);
     if sum(idx) == 0
-        if iTrial < max(Position.trial_number)
-            warning('No matches for Session-%s::Trial-%d', session_key, iTrial);
-        end
         continue;
     elseif sum(idx) > 1
         idx = find((TrialData.Session == session_key) & (TrialData.Trial_Number == iTrial) & (TrialData.Trial_Outcome == 1), 1, 'last');
@@ -67,9 +64,6 @@ for iRow = 1:size(Position, 1)
 %         end
     else
         idx = find(idx,1,'first');
-    end
-    if numel(idx) ~= numel(iRow)
-         keyboard
     end
     Position.parameters_index(iRow) = TrialData.Parameters_ID(idx);
 end

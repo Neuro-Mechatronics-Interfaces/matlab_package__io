@@ -408,6 +408,9 @@ Position.Properties.CustomProperties.Parameters = log_params;
 
 Logs = addprop(Logs, {'Files'}, {'table'});
 Logs.Properties.CustomProperties.Files = F;
+
+io.save_parsed_wrist_task_logs(Position, Logs, Header);
+
 fprintf(1, '<strong>complete!</strong>\n\n');
 toc;
 
