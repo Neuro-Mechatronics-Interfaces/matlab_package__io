@@ -26,7 +26,7 @@ function x = load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir)
 % See also: Contents, parseXML, TMSiSAGA.Poly5.read, io.load_tmsi_raw
 
 if nargin < 7
-    rootdir = utils.parameters('raw_data_folder');
+    rootdir = parameters('raw_data_folder');
 end
 
 if (numel(BLOCK) > 1) || (numel(ARRAY) > 1)

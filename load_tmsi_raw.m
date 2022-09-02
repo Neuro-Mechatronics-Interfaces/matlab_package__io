@@ -28,7 +28,7 @@ function [x, info] = load_tmsi_raw(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir)
 %               parse_polybench_data_manager_notes
 
 if nargin < 7
-    rootdir = utils.parameters('raw_data_folder');
+    rootdir = parameters('raw_data_folder');
 end
 
 if (numel(BLOCK) > 1) || (numel(ARRAY) > 1)

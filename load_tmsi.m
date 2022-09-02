@@ -30,7 +30,7 @@ function [x, info] = load_tmsi(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, type, rootdir)
 %           io.load_tmsi_raw, io.load_tmsi_mat
 
 if nargin < 8
-    rootdir = utils.parameters('raw_data_folder');
+    rootdir = parameters('raw_data_folder');
 end
 
 if (numel(BLOCK) > 1) || (numel(ARRAY) > 1)

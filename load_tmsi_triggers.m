@@ -28,7 +28,7 @@ function offset = load_tmsi_triggers(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir)
 % See also: Contents, io.load_tmsi_triggers, io.load_tmsi_raw
 
 if nargin < 7
-    rootdir = utils.parameters('generated_data_folder');
+    rootdir = parameters('generated_data_folder');
 end
 
 % Iterate over ARRAY and BLOCK elements if any are non-scalar.

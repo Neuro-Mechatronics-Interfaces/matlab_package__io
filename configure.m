@@ -34,7 +34,7 @@ pars.ab_offset = 0; % seconds
 pars.px = 1;  % Index corresponding to x-axis potentiometer
 pars.py = 2;  % Index corresponding to y-axis potentiometer
 pars.range_degrees = [50; 60];
-pars.rootdir_gen = utils.parameters('generated_data_folder'); 
+pars.rootdir_gen = parameters('generated_data_folder'); 
 pars.set_potentiometers = true;
 pars = utils.parse_parameters(pars, varargin{:});
 

@@ -22,7 +22,7 @@ function m = load_muscle_map(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir)
 % See also: Contents, JSON
 
 if nargin < 7
-    rootdir = utils.parameters('raw_data_folder');
+    rootdir = parameters('raw_data_folder');
 end
 
 if (numel(BLOCK) > 1) || (numel(ARRAY) > 1)
