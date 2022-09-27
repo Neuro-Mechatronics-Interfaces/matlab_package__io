@@ -18,7 +18,7 @@ function result = dump(data, style)
 %       scalar logical          | Boolean
 %       scalar string           | String
 %       char vector             | String
-%       scalar yaml.Null        | null
+%       scalar io.yaml.Null        | null
 %
 %   Array conversion can be ambiguous. To ensure consistent conversion
 %   behaviour, consider manually converting array data to nested 1D cells
@@ -27,7 +27,7 @@ function result = dump(data, style)
 %   Example:
 %       >> DATA.a = 1
 %       >> DATA.b = {"text", false}
-%       >> STR = yaml.dump(DATA)
+%       >> STR = io.yaml.dump(DATA)
 %
 %         "a: 1.0
 %         b: [text, false]
@@ -75,7 +75,7 @@ result = string(result).replace(NULL_PLACEHOLDER, "null");
             result = java.lang.Boolean(data);
         elseif isstring(data)
             result = convertString(data);
-        elseif yaml.isNull(data)
+        elseif io.yaml.isNull(data)
             result = java.lang.String(NULL_PLACEHOLDER);
         else
             error("yaml:dump:TypeNotSupported", "Data type '%s' is not supported.", class(data))

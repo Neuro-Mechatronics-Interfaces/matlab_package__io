@@ -25,15 +25,15 @@ function result = loadFile(filePath, options)
 %       >> DATA.a = 1
 %       >> DATA.b = {"text", false}
 %       >> FILE = ".\test.yaml"
-%       >> yaml.dumpFile(FILE, DATA)
-%       >> yaml.loadFile("test.yaml")
+%       >> io.yaml.dumpFile(FILE, DATA)
+%       >> io.yaml.loadFile("test.yaml")
 %
 %         struct with fields:
 %
 %           a: 1
 %           b: {["text"]  [0]}
 %
-%   See also YAML.LOAD, YAML.DUMP, YAML.DUMPFILE, YAML.ISNULL
+%   See also IO.YAML.LOAD, IO.YAML.DUMP, IO.YAML.DUMPFILE, IO.YAML.ISNULL
 
 arguments
     filePath (1, 1) string
@@ -41,6 +41,6 @@ arguments
 end
 
 content = string(fileread(filePath));
-result = yaml.load(content, "ConvertToArray", options.ConvertToArray);
+result = io.yaml.load(content, "ConvertToArray", options.ConvertToArray);
 
 end

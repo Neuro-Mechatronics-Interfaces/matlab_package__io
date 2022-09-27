@@ -16,9 +16,9 @@ classdef Tests < matlab.unittest.TestCase
                 ".nan", NaN
                 ".inf", inf
                 "-.inf", -inf
-                "null", yaml.Null
-                "", yaml.Null
-                "~", yaml.Null
+                "null", io.yaml.Null
+                "", io.yaml.Null
+                "~", io.yaml.Null
                 "2019-09-07T15:50:00", datetime(2019, 9, 7, 15, 50, 0, "TimeZone", "UTC")
                 "2019-09-07 15:50:00", datetime(2019, 9, 7, 15, 50, 0, "TimeZone", "UTC")
                 "2019-09-07", datetime(2019, 9, 7, "TimeZone", "UTC")
@@ -27,7 +27,7 @@ classdef Tests < matlab.unittest.TestCase
 
             for test = tests'
                 [s, expected] = test{:};
-                actual = yaml.load(s);
+                actual = io.yaml.load(s);
                 testCase.verifyEqual(actual, expected);
             end
         end
@@ -44,13 +44,13 @@ classdef Tests < matlab.unittest.TestCase
                 "[[1, 2], []]", {[1, 2], []}
                 "[1, true]", {1, true}
                 "[[a, b], [c, d]]", ["a", "b"; "c", "d"]
-                "[null, 1]", {yaml.Null, 1}
-                "[null, null]", [yaml.Null, yaml.Null]
+                "[null, 1]", {io.yaml.Null, 1}
+                "[null, null]", [io.yaml.Null, io.yaml.Null]
                 };
 
             for test = tests'
                 [s, expected] = test{:};
-                actual = yaml.load(s, "ConvertToArray", true);
+                actual = io.yaml.load(s, "ConvertToArray", true);
                 testCase.verifyEqual(actual, expected);
             end
         end
@@ -72,7 +72,7 @@ classdef Tests < matlab.unittest.TestCase
                 nan, ".NaN"
                 inf, ".inf"
                 -inf, "-.inf"
-                yaml.Null, "null"
+                io.yaml.Null, "null"
                 [1, 2], "[1.0, 2.0]"
                 ["a", "b"], "[a, b]"
                 [true, false], "[true, false]"
@@ -87,7 +87,7 @@ classdef Tests < matlab.unittest.TestCase
             for test = tests'
                 [data, expected] = test{:};
                 expected = expected + newline;
-                actual = yaml.dump(data);
+                actual = io.yaml.dump(data);
                 testCase.verifyEqual(actual, expected);
             end
         end
@@ -95,12 +95,12 @@ classdef Tests < matlab.unittest.TestCase
         function dump_3dcell(testCase)
             data = num2cell(ones(2, 2, 2));
             data{1, 1, 2} = "a";
-            data{1, 2, 1} = yaml.Null;
+            data{1, 2, 1} = io.yaml.Null;
             data{2, 1, 1} = {1, 2};
 
             expected = sprintf("- - [1.0, a]\n  - ['null', 1.0]\n- - - [1.0, 2.0]\n    - 1.0\n  - [1.0, 1.0]\n");
 
-            actual = yaml.dump(data);
+            actual = io.yaml.dump(data);
             testCase.verifyEqual(actual, expected);
         end
 
@@ -115,7 +115,7 @@ classdef Tests < matlab.unittest.TestCase
 
             for test = tests'
                 [data, errorId] = test{:};
-                func = @() yaml.dump(data);
+                func = @() io.yaml.dump(data);
                 testCase.verifyError(func, errorId);
             end
         end
@@ -132,7 +132,7 @@ classdef Tests < matlab.unittest.TestCase
 
             for iTest = 1:size(tests, 1)
                 [style, expected] = tests{iTest, :};
-                actual = yaml.dump(data, style);
+                actual = io.yaml.dump(data, style);
                 testCase.verifyEqual(actual, expected);
             end
 
@@ -149,7 +149,7 @@ classdef Tests < matlab.unittest.TestCase
 
             testPath = tempname;
 
-            yaml.dumpFile(testPath, data)
+            io.yaml.dumpFile(testPath, data)
             fid = fopen(testPath);
             actual = string(fscanf(fid, "%c"));
             fclose(fid);
@@ -163,8 +163,8 @@ classdef Tests < matlab.unittest.TestCase
             data = struct("a", 1.23, "b", "test");
 
             testPath = tempname;
-            yaml.dumpFile(testPath, data)
-            actual = yaml.loadFile(testPath);
+            io.yaml.dumpFile(testPath, data)
+            actual = io.yaml.loadFile(testPath);
 
             testCase.verifyEqual(actual, data);
             delete(testPath)
@@ -175,8 +175,8 @@ classdef Tests < matlab.unittest.TestCase
             expected = [1, 2];
 
             testPath = tempname;
-            yaml.dumpFile(testPath, data)
-            actual = yaml.loadFile(testPath, "ConvertToArray", true);
+            io.yaml.dumpFile(testPath, data)
+            actual = io.yaml.loadFile(testPath, "ConvertToArray", true);
 
             testCase.verifyEqual(actual, expected);
             delete(testPath)
@@ -184,12 +184,12 @@ classdef Tests < matlab.unittest.TestCase
 
         function isNull(testCase)
 
-            testCase.verifyTrue(yaml.isNull(yaml.Null))
+            testCase.verifyTrue(io.yaml.isNull(io.yaml.Null))
 
             nonNulls = {NaN, missing, "", "a", datetime(2022, 1, 1), NaT, '', {}, [], inf, -inf, 1};
 
             for i = 1:length(nonNulls)
-                testCase.verifyFalse(yaml.isNull(nonNulls{i}))
+                testCase.verifyFalse(io.yaml.isNull(nonNulls{i}))
             end
         end
 
@@ -198,14 +198,14 @@ classdef Tests < matlab.unittest.TestCase
                 % Input arguments | Expected
                 {}, yaml.Null
                 {1}, yaml.Null
-                {2}, repmat(yaml.Null, 2, 2)
-                {2, 3}, repmat(yaml.Null, 2, 3)
-                {3, 2}, repmat(yaml.Null, 3, 2)
+                {2}, repmat(io.yaml.Null, 2, 2)
+                {2, 3}, repmat(io.yaml.Null, 2, 3)
+                {3, 2}, repmat(io.yaml.Null, 3, 2)
                 };
 
             for test = tests'
                 [args, expected] = test{:};
-                actual = yaml.Null(args{:});
+                actual = io.yaml.Null(args{:});
                 testCase.assertEqual(actual, expected)
             end
         end

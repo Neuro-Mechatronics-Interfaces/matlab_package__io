@@ -16,14 +16,14 @@ function dumpFile(filePath, data, style)
 %       scalar logical       | Boolean
 %       scalar string        | String
 %       char vector          | String
-%       scalar yaml.Null     | null
+%       scalar io.yaml.Null     | null
 %
 %   Example:
 %       >> DATA.a = 1
 %       >> DATA.b = {"text", false}
 %       >> FILE = ".\test.yaml"
-%       >> yaml.dumpFile(FILE, DATA)
-%       >> yaml.loadFile("test.yaml")
+%       >> io.yaml.dumpFile(FILE, DATA)
+%       >> io.yaml.loadFile("test.yaml")
 %
 %         struct with fields:
 %
@@ -39,7 +39,7 @@ arguments
 end
 
 % Create YAML string.
-yamlString = yaml.dump(data, style);
+yamlString = io.yaml.dump(data, style);
 
 % Create folder.
 folder = fileparts(filePath);

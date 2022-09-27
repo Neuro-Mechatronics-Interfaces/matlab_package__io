@@ -59,7 +59,7 @@ end
                 if ~isempty(node)
                     result = node;
                 else
-                    result = yaml.Null;
+                    result = io.yaml.Null;
                 end
             case "char"
                 result = string(node);
