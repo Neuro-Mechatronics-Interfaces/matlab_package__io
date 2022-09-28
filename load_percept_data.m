@@ -39,9 +39,9 @@ img_str = sprintf('%s_Sensation*_%d.png', tank, BLOCK);
 sens_data = struct;
 sens_data.tank = tank;
 sens_data.block = BLOCK;
-sens_data.fname.pixel = fullfile(pars.raw_data_folder, SUBJ, tank, 'notes', tank, pixel_str);
-sens_data.fname.gui = fullfile(pars.raw_data_folder, SUBJ, tank, 'notes', tank, gui_str);
-sens_data.fname.img = fullfile(pars.raw_data_folder, SUBJ, tank, 'notes', tank, img_str);
+sens_data.fname.pixel = string(fullfile(pars.raw_data_folder, SUBJ, tank, 'notes', tank, pixel_str));
+sens_data.fname.gui = string(fullfile(pars.raw_data_folder, SUBJ, tank, 'notes', tank, gui_str));
+sens_data.fname.img = string(fullfile(pars.raw_data_folder, SUBJ, tank, 'notes', tank, img_str));
 
 
 if exist(sens_data.fname.pixel, 'file')==0
@@ -60,7 +60,7 @@ else
     s = textscan(fid, '%s', 'Delimiter', '\n');
     fclose(fid);
     idx = [find(startsWith(s{1}, 'Sensation')); numel(s{1})+1];
-    sens_data.gui = cell(numel(sens_data.fname.gui), 1);
+    sens_data.gui = cell(numel(s), 1);
     for ii = 1:(numel(idx)-1)
         vec = (idx(ii)+1):(idx(ii+1)-1);
         sens_data.gui{ii, 1} = io.yaml.load(strjoin(s{1}(vec), '\n')); 
