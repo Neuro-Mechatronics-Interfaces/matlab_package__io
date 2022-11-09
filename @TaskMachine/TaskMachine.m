@@ -109,7 +109,7 @@ classdef TaskMachine < handle
             %DELETE  Overloaded delete method to ensure child object destruction.
 
             
-            self.trials_.Writable = false;
+            self.trials_.Properties.Writable = false;
             try %#ok<TRYNC> 
                 for ii = 1:numel(self.lh_)
                     delete(self.lh_(ii));
