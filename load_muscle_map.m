@@ -57,8 +57,8 @@ if exist(mname, 'file') == 0
     end
 end
 tic;
-fprintf(1, 'Reading <strong>%s</strong>...', mname);
+% fprintf(1, 'Reading <strong>%s</strong>...', mname);
 m = io.JSON(mname);
-fprintf(1, 'complete.\n');
+% fprintf(1, 'complete.\n');
 toc;
 end
