@@ -48,7 +48,7 @@ if ~isnumeric(BLOCK)
     BLOCK = str2double(BLOCK);
 end
 
-f = utils.get_block_name(SUBJ, YYYY, MM, DD, ARRAY, BLOCK);
+f = utils.get_block_name(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, 'rootdir_raw', rootdir);
 str = fullfile(f.Raw.Tank, sprintf('%s_%s_%d*', f.Tank, ARRAY, BLOCK));
 F = dir(str);
 if isempty(F)
