@@ -53,7 +53,7 @@ for iH = 1:size(H, 1)
 end
 
 Outcome = Logs(Logs.var_name == "outcome.last", {'value'});
-Outcome.trial_last = TaskState(str2double(Outcome.value));
+Outcome.trial_last = enum.TaskState(str2double(Outcome.value));
 Outcome.value = [];
 Outcome.trial_overshoots = str2double(Logs.value(Logs.var_name == "outcome.overshoots"));
 Outcome.trial_duration = seconds(str2double(Logs.value(Logs.var_name == "outcome.duration_ns")));
@@ -61,7 +61,7 @@ Outcome.trial_result = strcmp(Logs.value(Logs.var_name == "outcome.result"), 'SU
 Outcome.Properties.VariableContinuity = {'step', 'step', 'step', 'step'};
 
 Haptics = Logs(Logs.var_name == "haptics.index", {'value'});
-Haptics.pulse_code = MotorCode(str2double(Haptics.value));
+Haptics.pulse_code = enum.MotorCode(str2double(Haptics.value));
 Haptics.value = [];
 Haptics.state = repmat(TaskState.T2_INSTRUCT_H1, size(Haptics, 1), 1);
 Haptics.pulse_duration = str2double(Logs.value(Logs.var_name == "haptics.duration"));
@@ -83,7 +83,7 @@ if isnan(str2double(State.value(1)))
     State.state(State.state == "OVERSHOOT") = "MISTAKE";
     hState.state = string(TaskState(hState.state));
 else
-    State.state = TaskState(str2double(State.value)); 
+    State.state = enum.TaskState(str2double(State.value)); 
 end
 State.value = [];
 State.Properties.VariableContinuity = {'step'};
@@ -106,7 +106,7 @@ Counter.value = [];
 Counter.Properties.VariableContinuity = {'step'};
 
 Direction = Logs(Logs.var_name == "direction", {'value'});
-Direction.direction = TaskDirection(uint32(string(Direction.value) == "TaskDirection.OUT_TO_IN"));
+Direction.direction = enum.TaskDirection(uint32(string(Direction.value) == "TaskDirection.OUT_TO_IN"));
 Direction.value = [];
 Direction.Properties.VariableContinuity = {'step'};
 
