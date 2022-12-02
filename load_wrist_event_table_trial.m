@@ -88,7 +88,7 @@ if exist(fname_gen, 'file')==0
     if sum(impedance_files) > 0
         G = F(impedance_files);
         F(impedance_files) = [];
-        output_imp_filename = string(fullfile(generated_folder, sprintf("%s_impedances_%d.mat", tank, T.block)));
+        output_imp_filename = string(fullfile(generated_folder, sprintf("%s_impedances.mat", tank)));
         if exist(output_imp_filename,'file')==0
             imp_file = strings(size(G));
             for iG = 1:numel(G)
