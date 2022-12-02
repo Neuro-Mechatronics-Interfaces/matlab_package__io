@@ -6,18 +6,22 @@ function T = read_events(SUBJ, YYYY, MM, DD, varargin)
 
 pars = struct;
 pars.events_file_in = 'notes/events-export.csv';
-pars.events_file_out = 'notes/parsed-events.mat';
-pars.raw_data_folder = parameters('raw_data_folder');
+pars.events_file_out = '%s_trials.mat';
+[pars.generated_data_folder, pars.raw_data_folder] = ...
+    parameters('generated_data_folder', 'raw_data_folder');
 pars = utils.parse_parameters(pars, varargin{:});
 
 tank = sprintf('%s_%04d_%02d_%02d', SUBJ, YYYY, MM, DD);
 fname_in = fullfile(pars.raw_data_folder, SUBJ, tank, pars.events_file_in);
-fname_out = fullfile(pars.raw_data_folder, SUBJ, tank, pars.events_file_out);
+out_path = fullfile(pars.generated_data_folder, SUBJ, tank);
+fname_out = fullfile(out_path, sprintf(pars.events_file_out, tank));
 
 if exist(fname_out,'file')~=0
     T = getfield(load(fname_out, 'T'), 'T');
     fprintf(1,'Loaded existing wrist trials event file: <strong>%s</strong>\n', fname_out);
     return;
+elseif exist(out_path,'dir')==0
+    mkdir(out_path);
 end
 
 T = readtable(fname_in);
