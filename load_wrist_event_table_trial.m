@@ -21,7 +21,6 @@ function [data, meta] = load_wrist_event_table_trial(T, varargin)
 % See also: Contents, io.read_events
 
 pars = struct;
-pars.trigger_channel = 72;
 pars.a = [];
 pars.b = [];
 pars.pot.fc = 100;
@@ -32,6 +31,7 @@ pars.pot.x = 1; % Relative order of potentiometer x-channel
 pars.pot.y = 2; % Relative order of potentiometer y-channel
 pars.pot.offset = [0.57, 0.98]; % Center target middle (volts; x/y in MID)
 pars.pot.scale  = [125,  100];  % Scales volts to degrees.
+pars.pot.mov_thresh = 2.5; % Degrees/sec; threshold to consider move onset.
 pars.fc = [25, 400]; % Specify as scalar to use a highpass instead of bandpass
 pars.fs = 4000;      % Default TMSi sample rate
 pars.ord = 2;        % Filter order for butterworth filter on generated data
@@ -63,6 +63,7 @@ if N > 1
         end
         fprintf(1,'\b\b\b\b\b%03d%%\n', floor(iT*100/N));
     end
+    data(cellfun(@(C)isempty(C),data)) = [];
     return;
 end
 
@@ -95,6 +96,11 @@ if exist(fname_gen, 'file')==0
             end
             io.process_raw_impedances(imp_file, output_imp_filename);
         end
+    end
+
+    if isempty(F)
+        data = [];
+        return;
     end
 
     channels = struct;
@@ -134,21 +140,42 @@ if exist(fname_gen, 'file')==0
     samples(i_filter, :) = filtfilt(pars.b, pars.a, samples(i_filter,:)')';
     data = struct;
     
-    data.uni = int16(samples(isExG(channels), :) .* 20);
-    data.bip = int16(samples(isBip(channels), :) .* 20);
-    data.sync = uint8(15 - samples(pars.trigger_channel,:));
-    iAux = find(isAux(channels));
+    data.uni = single(samples(isExG(channels) & ~isRef(channels), :));
+    data.bip = single(samples(isBip(channels), :));
+    data.sync = uint8(15 - samples(isTrig(channels),:));
+    iAux = find(contains({channels.name}, 'AUX'));
     if isempty(iAux)
         data.x = [];
         data.y = [];
+        xg = 0;
+        yg = 0;
     else
         pot_data = filtfilt(pars.pot.b, pars.pot.a, samples(iAux,:)')';
-        if T.orientation == enum.TaskOrientation.MID
-            data.x = int16((pot_data(pars.pot.x,:) - pars.pot.offset(pars.pot.x))./pars.pot.scale(pars.pot.x) .* 10);
-            data.y = int16((pot_data(pars.pot.y,:) - pars.pot.offset(pars.pot.y))./pars.pot.scale(pars.pot.y) .* 10);
-        else
-            data.x = int16((pot_data(pars.pot.y,:) - pars.pot.offset(pars.pot.y))./pars.pot.scale(pars.pot.y) .* 10);
-            data.y = int16((pot_data(pars.pot.x,:) - pars.pot.offset(pars.pot.x))./pars.pot.scale(pars.pot.x) .* 10);
+        try
+            if T.orientation == enum.TaskOrientation.MID
+                xg = pars.pot.scale(pars.pot.x);
+                yg = pars.pot.scale(pars.pot.y);
+                data.x = single((pot_data(pars.pot.x,:) - pars.pot.offset(pars.pot.x)).*xg);
+                data.y = single((pot_data(pars.pot.y,:) - pars.pot.offset(pars.pot.y)).*yg);
+            else
+                xg = pars.pot.scale(pars.pot.y);
+                yg = pars.pot.scale(pars.pot.x);
+                data.x = -single((pot_data(pars.pot.y,:) - pars.pot.offset(pars.pot.y)).*xg);
+                data.y = single((pot_data(pars.pot.x,:) - pars.pot.offset(pars.pot.x)).*yg);
+            end
+            r = sqrt(data.x.^2 + data.y.^2); 
+            d_r = movmean(abs(diff(r))./0.005, 41, 'Endpoints', 0);
+            i_move = find(d_r >= pars.pot.mov_thresh, 1, 'first');
+            if ~isempty(i_move)
+                data.sync(i_move) = data.sync(i_move) + 16;
+            end
+        catch me
+            if strcmpi(me.identifier,'MATLAB:badsubscript')
+                data.x = zeros(1,n);
+                data.y = zeros(1,n);
+            else
+                rethrow(me);
+            end
         end
     end
     data.t = tmp.time + milliseconds((0:(n-1))./4);
@@ -161,8 +188,9 @@ if exist(fname_gen, 'file')==0
     meta.fs = pars.fs;
     meta.fc = pars.fc;
     meta.ord = pars.ord;
+    meta.thresh = pars.pot.mov_thresh;
     meta.channels = channels;
-    meta.gain = struct('x', 10, 'y', 10, 'uni', 20, 'bip', 20);
+    meta.gain = struct('x', xg, 'y', yg, 'uni', 1, 'bip', 1);
     fname_meta = fullfile(generated_folder, sprintf("%s_metadata.mat", tank));
     if exist(fname_meta, 'file')==0
         save(fname_meta, '-struct', 'meta');
@@ -175,7 +203,7 @@ else % Otherwise it exists. Load the trial data.
     % outputs explicitly requested) then return metadata also.
     if nargout > 1
         fname_meta = fullfile(generated_folder, sprintf("%s_metadata.mat", tank));
-        meta = load(fname_meta, 'fs', 'fc', 'ord', 'channels', 'gain');
+        meta = load(fname_meta, 'fs', 'fc', 'ord', 'thresh', 'channels', 'gain');
     end
 end
 
