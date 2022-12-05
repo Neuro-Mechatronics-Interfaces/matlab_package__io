@@ -7,6 +7,7 @@ function T = read_events(SUBJ, YYYY, MM, DD, varargin)
 pars = struct;
 pars.events_file_in = 'notes/events-export.csv';
 pars.events_file_out = '%s_trials.mat';
+pars.verbose = false;
 [pars.generated_data_folder, pars.raw_data_folder] = ...
     parameters('generated_data_folder', 'raw_data_folder');
 pars = utils.parse_parameters(pars, varargin{:});
@@ -18,7 +19,9 @@ fname_out = fullfile(out_path, sprintf(pars.events_file_out, tank));
 
 if exist(fname_out,'file')~=0
     T = getfield(load(fname_out, 'T'), 'T');
-    fprintf(1,'Loaded existing wrist trials event file: <strong>%s</strong>\n', fname_out);
+    if pars.verbose
+        fprintf(1,'Loaded existing wrist trials event file: <strong>%s</strong>\n', fname_out);
+    end
     return;
 elseif exist(out_path,'dir')==0
     mkdir(out_path);
@@ -51,6 +54,7 @@ T.excluded_by_noise = false(N,1);
 T.excluded_by_manual= false(N,1);
 
 save(fname_out, 'T', '-v7.3');
-fprintf(1,'Saved wrist trials event file: <strong>%s</strong>\n', fname_out);
-
+if pars.verbose
+    fprintf(1,'Saved wrist trials event file: <strong>%s</strong>\n', fname_out);
+end
 end

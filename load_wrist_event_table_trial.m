@@ -31,10 +31,11 @@ pars.pot.x = 1; % Relative order of potentiometer x-channel
 pars.pot.y = 2; % Relative order of potentiometer y-channel
 pars.pot.offset = [0.57, 0.98]; % Center target middle (volts; x/y in MID)
 pars.pot.scale  = [125,  100];  % Scales volts to degrees.
-pars.pot.mov_thresh = 2.5; % Degrees/sec; threshold to consider move onset.
+pars.pot.mov_thresh = 5; % Degrees/sec; threshold to consider move onset.
 pars.fc = [25, 400]; % Specify as scalar to use a highpass instead of bandpass
 pars.fs = 4000;      % Default TMSi sample rate
 pars.ord = 2;        % Filter order for butterworth filter on generated data
+pars.verbose = true; % Print debug feedback.
 [pars.generated_data_folder, pars.raw_data_folder] = ...
     parameters('generated_data_folder', 'raw_data_folder');
 pars = utils.parse_parameters(pars, varargin{:});
@@ -78,7 +79,9 @@ fname_gen = fullfile(generated_folder, sprintf("%s_%d.mat", tank, T.block));
 % Check for the "generated" file.
 if exist(fname_gen, 'file')==0
     % If it does not exist, create/save it, using the raw data.
-    fprintf(1,'\b...(extracting)');
+    if pars.verbose
+        fprintf(1,'\b...(extracting)');
+    end
     f_expr = sprintf("%s_*_%d.mat", tank, T.block);
     F = dir(fullfile(pars.raw_data_folder, SUBJ, tank, f_expr));
 
@@ -123,8 +126,14 @@ if exist(fname_gen, 'file')==0
     if numel(F) > 1
         samples = vertcat(samples.A(:,1:n), samples.B(:,1:n));
         if iscell(channels.A)
-            channels = vertcat(channels.A{:}, channels.B{:});
+            a_channels = vertcat(channels.A{:});
+            setSAGA(a_channels, "A");
+            b_channels = vertcat(channels.B{:});
+            setSAGA(b_channels, "B");
+            channels = vertcat(a_channels, b_channels);
         else
+            setSAGA(channels.A, "A");
+            setSAGA(channels.B, "B");
             channels = vertcat(channels.A, channels.B);
         end
     else
@@ -134,6 +143,7 @@ if exist(fname_gen, 'file')==0
         else
             channels = channels.(tag);
         end
+        setSAGA(channels, tag);
     end
 
     i_filter = channels.isExG() | channels.isBip();
@@ -195,7 +205,9 @@ if exist(fname_gen, 'file')==0
     if exist(fname_meta, 'file')==0
         save(fname_meta, '-struct', 'meta');
     end
-    fprintf(1,'\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\n');
+    if pars.verbose
+        fprintf(1,'\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\n');
+    end
 else % Otherwise it exists. Load the trial data.
     data = load(fname_gen, 'uni', 'bip', 'sync', 'x', 'y', 't');
     
