@@ -18,6 +18,10 @@ input_imp_files = string(input_imp_files);
 
 impedance = struct('Units', 'kΩ');
 for ii = 1:numel(input_imp_files)
+    if exist(input_imp_files(ii),'file')==0
+        me = MException('io:missing_file:raw', 'No file named "%s" exists.', input_imp_files(ii));
+        throw(me);
+    end
     f_info = strsplit(input_imp_files(ii), '_');
     i_tag = contains(f_info, '-impedance');
     f_info = char(f_info{i_tag});
@@ -28,6 +32,10 @@ if numel(input_imp_files) > 1
     impedance = [impedance.A(2:65); impedance.B(2:65)];
 else
     impedance = impedance.(tag)(2:65);
+end
+[p,~,~] = fileparts(output_imp_filename);
+if exist(p, 'dir')==0
+    mkdir(p);
 end
 save(output_imp_filename, 'impedance', '-v7.3');
 % fprintf(1,'Saved median impedance data to file: <strong>%s</strong>\n', output_imp_filename);

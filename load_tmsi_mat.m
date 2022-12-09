@@ -48,6 +48,13 @@ end
 
 f = utils.get_block_name(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, 'rootdir_raw', rootdir);
 
+if exist(f.Raw.Block,'file')==0
+    me = MException('io:missing_file:raw', ...
+        'No file named "%s" exists.', ...
+        f.Raw.Block);
+    throw(me);
+end
+
 tic;
 fprintf(1, 'Reading <strong>%s</strong>...', f.Block);
 x = load(f.Raw.Block);

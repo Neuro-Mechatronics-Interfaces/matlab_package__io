@@ -20,7 +20,9 @@ tank = sprintf('%s_%04d_%02d_%02d', SUBJ, YYYY, MM, DD);
 
 fname = fullfile(pars.generated_data_folder, SUBJ, tank, sprintf("%s_impedances.mat", tank));
 if exist(fname,'file')==0
-    error("No such file: %s\n\t->\tHave you parsed raw impedances yet?", fname);
+    error('io:missing_file:generated', ...
+        'No such file: "%s"\n\t->\tHave you parsed raw impedances yet?', ...
+        fname);
 end
 impedance = getfield(load(fname, 'impedance'),'impedance');
 

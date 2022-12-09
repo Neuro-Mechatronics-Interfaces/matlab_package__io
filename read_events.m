@@ -27,6 +27,10 @@ elseif exist(out_path,'dir')==0
     mkdir(out_path);
 end
 
+if exist(fname_in, 'file')==0
+    me = MException('io:missing_file:raw', 'No file named "%s" exists.\n\n\t->\tHave you exported the events query from the SQLite Home-Assistant Database for this session?\t<-\t\n\t\t\t(Once you do, it needs to be put into the file path as shown above)\n\n', fname_in);
+    throw(me);
+end
 T = readtable(fname_in);
 T.subject = string(T.subject);
 T.task = string(T.task);
