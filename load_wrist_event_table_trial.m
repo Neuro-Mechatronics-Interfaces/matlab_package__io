@@ -32,7 +32,7 @@ pars.pot.x = 1; % Relative order of potentiometer x-channel
 pars.pot.y = 2; % Relative order of potentiometer y-channel
 pars.pot.offset = [0.57, 0.98]; % Center target middle (volts; x/y in MID)
 pars.pot.scale  = [125,  100];  % Scales volts to degrees.
-pars.pot.mov_thresh = 11; % percent-max velocity; threshold to consider move onset.
+pars.pot.mov_thresh = 25; % percent-max velocity; threshold to consider move onset.
 pars.pot.max_lag = 80; % Max lag (samples -> 80 = 20-ms maximum xcorr lag to compute between A and B potentiometer signals; shouldn't be off by more than that).
 pars.fc = [25, 400]; % Specify as scalar to use a highpass instead of bandpass
 pars.fs = 4000;      % Default TMSi sample rate

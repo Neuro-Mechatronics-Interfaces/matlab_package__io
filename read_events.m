@@ -22,6 +22,14 @@ if exist(fname_out,'file')~=0
     if pars.verbose
         fprintf(1,'Loaded existing wrist trials event file: <strong>%s</strong>\n', fname_out);
     end
+    if ~ismember('rms_agonist', T.Properties.VariableNames)
+        N = size(T,1);
+        T.rms = nan(N,128);
+        T.rms_agonist = nan(N,128);
+        T.rms_antagonist = nan(N,128);
+        T.theta = nan(N,1); 
+        save(fname_out, 'T', '-v7.3');
+    end
     return;
 elseif exist(out_path,'dir')==0
     mkdir(out_path);
@@ -56,6 +64,10 @@ T = T(:, [(end-1):end, 1:(end-2)]);
 T.excluded_by_pots  = false(N,1);
 T.excluded_by_noise = false(N,1);
 T.excluded_by_manual= false(N,1);
+T.rms = nan(N,128);
+T.rms_agonist = nan(N,128);
+T.rms_antagonist = nan(N,128);
+T.theta = nan(N, 1);
 
 save(fname_out, 'T', '-v7.3');
 if pars.verbose
