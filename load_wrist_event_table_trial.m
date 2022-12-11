@@ -33,7 +33,9 @@ pars.pot.y = 2; % Relative order of potentiometer y-channel
 pars.pot.offset = [0.57, 0.98]; % Center target middle (volts; x/y in MID)
 pars.pot.scale  = [125,  100];  % Scales volts to degrees.
 pars.pot.mov_thresh = 100; % percent-max velocity; threshold to consider move onset.
+pars.pot.move_mean_window = 41; % Number of samples in moving mean for smoother.
 pars.pot.max_lag = 80; % Max lag (samples -> 80 = 20-ms maximum xcorr lag to compute between A and B potentiometer signals; shouldn't be off by more than that).
+pars.pot.theta_threshold = pi/6; % Angle threshold for considering MOVE velocity to be in the correct location.
 pars.fc = [25, 400]; % Specify as scalar to use a highpass instead of bandpass
 pars.fs = 4000;      % Default TMSi sample rate
 pars.n_sec_from_end_for_sync = 2.3; % Seconds from end of trial in order to consider sync. Set to "inf" to take the whole trial.
@@ -232,7 +234,9 @@ if exist(fname_gen, 'file')==0
                 data.y = single((pot_data(pars.pot.x,:) - pars.pot.offset(pars.pot.x)).*yg);
             end
             r = sqrt(data.x.^2 + data.y.^2); 
-            d_r = movmean(abs(diff(r)), 41, 'Endpoints', 0);
+            d_r = abs(diff(r));
+            d_r(abs(deg2rad(T.target_angle) - atan2(diff(data.y), diff(data.x))) > pars.pot.theta_threshold) = 0;
+            d_r = movmean(d_r, pars.pot.move_mean_window, 'Endpoints', 0);
             if isinf(pars.n_sec_from_end_for_sync)
                 d_r = (d_r ./ max(abs(d_r))) .* 100; 
                 i_move = find(d_r >= pars.pot.mov_thresh, 1, 'first');
