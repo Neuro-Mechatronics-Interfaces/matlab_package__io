@@ -235,7 +235,10 @@ if exist(fname_gen, 'file')==0
             end
             r = sqrt(data.x.^2 + data.y.^2); 
             d_r = abs(diff(r));
-            d_r(abs(deg2rad(T.target_angle) - atan2(diff(data.y), diff(data.x))) > pars.pot.theta_threshold) = 0;
+            theta = deg2rad(T.target_angle);
+            i_wrong_direction = abs(theta - atan2(diff(data.y), diff(data.x))) > pars.pot.theta_threshold;
+            i_wrong_state = ~((data.sync(1,:) == 11) | (data.sync(1,:) == 14));
+            d_r(i_wrong_direction & i_wrong_state) = 0;
             d_r = movmean(d_r, pars.pot.move_mean_window, 'Endpoints', 0);
             if isinf(pars.n_sec_from_end_for_sync)
                 d_r = (d_r ./ max(abs(d_r))) .* 100; 
