@@ -54,7 +54,7 @@ if ~startsWith(type, ".")
     type = strcat(".", type);
 end
 
-switch lower(type)
+switch lower(string(type))
     case ".mat"
         x = io.load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir);
         info = [];
@@ -65,6 +65,92 @@ switch lower(type)
         else
             [x, info] = io.load_tmsi_raw(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir);
         end
+    case ".lsl"
+        tank = sprintf('%s_%04d_%02d_%02d', SUBJ, YYYY, MM, DD);
+        name = sprintf('%s_%s_%03d', tank, ARRAY, BLOCK);
+        [streams, fileheader] = io.load_xdf(fullfile(rootdir, SUBJ, tank, sprintf('%s_AB_LSL_%03d.xdf', tank, BLOCK)));
+        info = fileheader.info;
+        dt = datetime(info.datetime(1:(end-5)), 'Format', 'uuuu-MM-dd HH:mm:ss.SSS');
+        n = inf;
+        k = struct;
+        for ii = 1:numel(streams)
+            n = min(n,streams{ii}.segments.num_samples);
+            tag_info = strsplit(streams{ii}.info.name, '-');
+            k.(tag_info{2}) = ii;
+        end
+        x = struct('channels', [], 'sample_rate', streams{1}.info.nominal_srate, 'samples', [], 'time', dt, ...
+                   'name', name, 'num_samples', []);
+        switch string(ARRAY)
+            case "A"
+                x.channels = streams{k.A}.info.desc.channels.channel;
+                info.layout.A = streams{k.A}.info.desc.layout;
+                info.t_begin.A = streams{k.B}.segments.t_begin;
+                x.samples = streams{k.A}.time_series;
+                x.num_samples = size(x.samples,2);
+            case "B"
+                x.channels = streams{k.B}.info.desc.channels.channel;
+                info.layout.B = streams{k.B}.info.desc.layout;
+                info.t_begin.B = streams{k.B}.segments.t_begin;
+                x.samples = streams{k.B}.time_series;
+                x.samples = size(x.samples, 2);
+            otherwise % e.g. "AB" or "*"
+                x.channels = [streams{k.A}.info.desc.channels.channel, streams{k.B}.info.desc.channels.channel];
+                info.layout.A = streams{k.A}.info.desc.layout;
+                info.layout.B = streams{k.B}.info.desc.layout;
+                info.t_begin.A = streams{k.B}.segments.t_begin;
+                info.t_begin.B = streams{k.B}.segments.t_begin;
+                x.samples = [streams{k.A}.time_series(:,1:n); streams{k.B}.time_series(:,1:n)];
+                x.num_samples = n;
+        end
+        for iCh = 1:numel(x.channels)
+            x.channels{iCh}.alternative_name = x.channels{iCh}.label; % For compatibility
+        end
+        x.channels = cell2mat(x.channels);
+    case ".xdf"
+        tank = sprintf('%s_%04d_%02d_%02d', SUBJ, YYYY, MM, DD);
+        F = dir(fullfile(rootdir, SUBJ, tank, sprintf('%s_AB*%03d.xdf', tank, BLOCK)));
+        if numel(F) ~= 1
+            error("Could not find any files; did you mean to specify .LSL type instead of .xdf?");
+        end
+        [streams, fileheader] = io.load_xdf(fullfile(F(1).folder, F(1).name));
+        info = fileheader.info;
+        dt = datetime(info.datetime(1:(end-5)), 'Format', 'uuuu-MM-dd HH:mm:ss.SSS');
+        n = inf;
+        k = struct;
+        for ii = 1:numel(streams)
+            n = min(n,streams{ii}.segments.num_samples);
+            tag_info = strsplit(streams{ii}.info.name, '-');
+            k.(tag_info{2}) = ii;
+        end
+        name = sprintf('%s_%s_%03d', tank, ARRAY, BLOCK);
+        x = struct('channels', [], 'sample_rate', streams{1}.info.nominal_srate, 'samples', [], 'time', dt, ...
+                   'name', name, 'num_samples', []);
+        switch string(ARRAY)
+            case "A"
+                x.channels = streams{k.A}.info.desc.channels.channel;
+                info.layout.A = streams{k.A}.info.desc.layout;
+                info.t_begin.A = streams{k.B}.segments.t_begin;
+                x.samples = streams{k.A}.time_series;
+                x.num_samples = size(x.samples,2);
+            case "B"
+                x.channels = streams{k.B}.info.desc.channels.channel;
+                info.layout.B = streams{k.B}.info.desc.layout;
+                info.t_begin.B = streams{k.B}.segments.t_begin;
+                x.samples = streams{k.B}.time_series;
+                x.samples = size(x.samples, 2);
+            otherwise % e.g. "AB" or "*"
+                x.channels = [streams{k.A}.info.desc.channels.channel, streams{k.B}.info.desc.channels.channel];
+                info.layout.A = streams{k.A}.info.desc.layout;
+                info.layout.B = streams{k.B}.info.desc.layout;
+                info.t_begin.A = streams{k.B}.segments.t_begin;
+                info.t_begin.B = streams{k.B}.segments.t_begin;
+                x.samples = [streams{k.A}.time_series(:,1:n); streams{k.B}.time_series(:,1:n)];
+                x.num_samples = n;
+        end
+        for iCh = 1:numel(x.channels)
+            x.channels{iCh}.alternative_name = x.channels{iCh}.label; % For compatibility
+        end
+        x.channels = cell2mat(x.channels);
     otherwise
         error("File parsing for TMSi not handled for type == %s.", type);
 end
