@@ -1,10 +1,13 @@
 function result = loadFile(filePath, options)
 % LOADFILE Read YAML file.
-%   DATA = YAML.LOADFILE(FILE) reads a YAML file and converts it to
+%   DATA = IO.  YAML.LOADFILE(FILE) reads a YAML file and converts it to
 %   appropriate data types DATA.
 %
-%   DATA = YAML.LOADFILE(STR, "ConvertToArray", true) additionally converts
+%   DATA = IO.YAML.LOADFILE(STR, "ConvertToArray", true) additionally converts
 %   sequences to 1D or 2D non-cell arrays if possible.
+%
+%   DATA = IO.YAML.LOADFILE(STR, "ExpectPCapPayload", true) for handling
+%   UDP payloads from exported TShark type Yaml packet captures
 %
 %   The YAML types are convert to MATLAB types as follows:
 %
@@ -38,9 +41,13 @@ function result = loadFile(filePath, options)
 arguments
     filePath (1, 1) string
     options.ConvertToArray (1, 1) logical = false
+    options.ExpectPCapPayload (1, 1) logical = false
 end
 
 content = string(fileread(filePath));
+if options.ExpectPCapPayload
+    content = string(strrep(char(content), ['!!binary |', newline, '      '], ''));
+end
 result = io.yaml.load(content, "ConvertToArray", options.ConvertToArray);
 
 end
