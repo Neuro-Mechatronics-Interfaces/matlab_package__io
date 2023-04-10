@@ -74,9 +74,11 @@ switch lower(string(type))
         n = inf;
         k = struct;
         for ii = 1:numel(streams)
-            n = min(n,streams{ii}.segments.num_samples);
-            tag_info = strsplit(streams{ii}.info.name, '-');
-            k.(tag_info{2}) = ii;
+            if startsWith(streams{ii}.info.name, 'SAGA')
+                n = min(n,streams{ii}.segments.num_samples);
+                tag_info = strsplit(streams{ii}.info.name, '-');
+                k.(tag_info{2}) = ii;
+            end
         end
         x = struct('channels', [], 'sample_rate', streams{1}.info.nominal_srate, 'samples', [], 'time', dt, ...
                    'name', name, 'num_samples', []);
