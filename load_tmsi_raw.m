@@ -1,8 +1,9 @@
-function [x, info] = load_tmsi_raw(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir)
+function [x, info] = load_tmsi_raw(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir, verbose)
 %LOAD_TMSI_RAW Loads raw data block
 %
 % Syntax:
 %   [x, info] = io.load_tmsi_raw(subj, yyyy, mm, dd, array, block);
+%   [x, info] = io.load_tmsi_raw(subj, yyyy, mm, dd, array, block, rootdir, verbose);
 %
 % Example:
 %   x = io.load_tmsi_raw('Ollie', 2021, 11, 4, "B", 16);
@@ -31,11 +32,15 @@ if nargin < 7
     rootdir = parameters('raw_data_folder');
 end
 
+if nargin < 8
+    verbose = true;
+end
+
 if (numel(BLOCK) > 1) || (numel(ARRAY) > 1)
     x = cell(numel(BLOCK), numel(ARRAY));
     for iB = 1:numel(BLOCK)
         for iA = 1:numel(ARRAY)
-            x{iB, iA} = io.load_tmsi_raw(SUBJ, YYYY, MM, DD, ARRAY(iA), BLOCK(iB), rootdir); 
+            x{iB, iA} = io.load_tmsi_raw(SUBJ, YYYY, MM, DD, ARRAY(iA), BLOCK(iB), rootdir, verbose); 
         end
     end
     x = vertcat(x{:});
@@ -54,7 +59,9 @@ F = dir(str);
 if isempty(F)
     x = [];
     info = [];
-    fprintf(1, 'No recording matches expression: <strong>%s</strong>\n', str);
+    if verbose
+        fprintf(1, 'No recording matches expression: <strong>%s</strong>\n', str);
+    end
     return;
 elseif numel(F) > 1
     iUse = nan;
@@ -69,13 +76,17 @@ elseif numel(F) > 1
     if isnan(iUse)
         x = [];
         info = [];
-        fprintf(1, 'Multiple recordings match expression, but no exact match for: <strong>%s</strong>\n', f.Block);
+        if verbose
+            fprintf(1, 'Multiple recordings match expression, but no exact match for: <strong>%s</strong>\n', f.Block);
+        end
         return;
     end
 end
 
-tic;
-fprintf(1, 'Reading <strong>%s</strong>...', F(1).name);
+if verbose
+    tic;
+    fprintf(1, 'Reading <strong>%s</strong>...', F(1).name);
+end
 fname = strrep(F(1).name, ' ', '');
 fname = strcat(fname, '.DATA.Poly5');
 full_fname = fullfile(F(1).folder, F(1).name, fname);
@@ -116,6 +127,8 @@ if nargout > 1
         info.Recording = info.name;
     end
 end
-fprintf(1, 'complete.\n');
-
+if verbose
+    fprintf(1, 'complete.\n');
+    toc;
+end
 end

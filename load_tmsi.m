@@ -1,8 +1,8 @@
-function [x, info] = load_tmsi(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, type, rootdir)
+function [x, info] = load_tmsi(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, type, rootdir, verbose)
 %LOAD_TMSI  API access-point for `load_tmsi_mat` or `load_tmsi_raw`. 
 %
 % Syntax:
-%   [x, info] = io.load_tmsi(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, type, rootdir);
+%   [x, info] = io.load_tmsi(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, type, rootdir, verbose);
 %
 % Example:
 %   x = io.load_tmsi('Ollie', 2021, 11, 4, "B", 16);
@@ -33,12 +33,16 @@ if nargin < 8
     rootdir = parameters('raw_data_folder');
 end
 
+if nargin < 9
+    verbose = true;
+end
+
 if (numel(BLOCK) > 1) || (numel(ARRAY) > 1)
     x = cell(numel(BLOCK), numel(ARRAY));
     info = cell(numel(BLOCK), numel(ARRAY));
     for iB = 1:numel(BLOCK)
         for iA = 1:numel(ARRAY)
-            [x{iB, iA}, info{iB, iA}] = io.load_tmsi(SUBJ, YYYY, MM, DD, ARRAY(iA), BLOCK(iB), type, rootdir); 
+            [x{iB, iA}, info{iB, iA}] = io.load_tmsi(SUBJ, YYYY, MM, DD, ARRAY(iA), BLOCK(iB), type, rootdir, verbose); 
         end
     end
     x = vertcat(x{:});
@@ -60,10 +64,10 @@ switch lower(string(type))
         info = [];
     case ".poly5"
         if nargout == 1
-            x = io.load_tmsi_raw(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir);
+            x = io.load_tmsi_raw(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir, verbose);
             info = [];
         else
-            [x, info] = io.load_tmsi_raw(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir);
+            [x, info] = io.load_tmsi_raw(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir, verbose);
         end
     case ".lsl"
         tank = sprintf('%s_%04d_%02d_%02d', SUBJ, YYYY, MM, DD);

@@ -1,8 +1,8 @@
-function x = load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir)
+function x = load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir, verbose)
 %LOAD_TMSI_MAT Loads "raw" data block that was saved via TMSiServer MATLAB API
 %
 % Syntax:
-%   x = io.load_tmsi_mat(subj, yyyy, mm, dd, array, block);
+%   x = io.load_tmsi_mat(subj, yyyy, mm, dd, array, block, rootdir, verbose);
 %
 % Example:
 %   x = io.load_tmsi_mat('Ollie', 2021, 11, 4, "B", 16);
@@ -29,11 +29,15 @@ if nargin < 7
     rootdir = parameters('raw_data_folder');
 end
 
+if nargin < 8
+    verbose = true;
+end
+
 if (numel(BLOCK) > 1) || (numel(ARRAY) > 1)
     x = cell(numel(BLOCK), numel(ARRAY));
     for iB = 1:numel(BLOCK)
         for iA = 1:numel(ARRAY)
-            x{iB, iA} = io.load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY(iA), BLOCK(iB), rootdir); 
+            x{iB, iA} = io.load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY(iA), BLOCK(iB), rootdir, verbose); 
         end
     end
     x = vertcat(x{:});
@@ -55,14 +59,18 @@ if exist(strcat(f.Raw.Block, '.mat'),'file')==0
     throw(me);
 end
 
-tic;
-fprintf(1, 'Reading <strong>%s</strong>...', f.Block);
+if verbose
+    tic;
+    fprintf(1, 'Reading <strong>%s</strong>...', f.Block);
+end
 x = load(f.Raw.Block);
 x.name = f.Block;
 x.num_samples = size(x.samples, 2);
 if ~isfield(x, 'sample_rate')
     x.sample_rate = 4000; % Default sample rate.
 end
-fprintf(1, 'complete.\n');
-
+if verbose
+    fprintf(1, 'complete.\n');
+    toc;
+end
 end
