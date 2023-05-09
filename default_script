@@ -1,0 +1,24 @@
+%$NAME - One line description of what the script performs (H1 line)
+%   Optional file header info (to give more details about the function than in the H1 line)
+%   Optional file header info (to give more details about the function than in the H1 line)
+%   Optional file header info (to give more details about the function than in the H1 line)
+%
+%   Description:
+%       $NAME description
+%
+%   Output:
+%       $NAME output
+%
+%   Other m-files required: none
+%   MAT-files required: none
+%
+%   See also: OTHER_SCRIPT_NAME,  OTHER_FUNCTION_NAME
+
+%   Author:
+%   Address:
+%   email:
+%   Website: http://www.
+%   Date: $date; Last revision: $date
+%
+%   Copyright (c) $year, Author
+%   All rights reserved.

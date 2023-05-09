@@ -1,0 +1,45 @@
+classdef $name
+    %$NAME - One line description of what the class performs (H1 line)
+    %   Optional file header info (to give more details about the function than in the H1 line)
+    %   Optional file header info (to give more details about the function than in the H1 line)
+    %   Optional file header info (to give more details about the function than in the H1 line)
+    %
+    %   $NAME constructor syntax:
+    %       $NAME_OBJ = $NAME()
+    %
+    %   $NAME properties/attributes:
+    %       Property 1 - description
+    %       Property 2 - description
+    %
+    %   $NAME methods/functions:
+    %       Method 1 - description
+    %       Method 2 - description
+    %
+    %   Examples: 
+    %       Line 1 of example
+    %       Line 2 of example
+    %       Line 3 of example
+    %
+    %   Other m-files required: none
+    %   MAT-files required: none
+    %
+    %   See also: OTHER_CLASS_NAME1,  OTHER_CLASS_NAME2
+
+    %   Author:
+    %   Address:
+    %   email:
+    %   Website: http://www.
+    %   Date: $date; Last revision: $date
+    %
+    %   Copyright (c) $year, Author
+    %   All rights reserved.
+
+
+    properties
+    end
+    
+    methods
+    end
+
+end
+
