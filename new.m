@@ -101,16 +101,19 @@ arguments
     filename (1,:) char = ''
 end
 
+
+p = mfilename('fullpath');
+[p, ~, ~] = fileparts(p);
 switch filetype
     
     case 'class'
-        default_template = 'default_class';
+        default_template = fullfile(p, 'default_class');
         
     case 'function'
-        default_template = 'default_function';
+        default_template = fullfile(p, 'default_function');
         
     case 'script'
-        default_template = 'default_script';
+        default_template = fullfile(p, 'default_script');
         
 end
 
@@ -154,15 +157,8 @@ catch exception
 end
 
 function filename = getFileName(shortFilename)
-
-    dot = strfind(shortFilename, '.');
-    if ~isempty(dot)
-        filename = shortFilename(1 : dot(1) - 1);
-    else
-        filename = shortFilename;
-    end
-    filename = [pwd, filesep, matlab.lang.makeValidName(filename), '.m'];
-
+    [~, f, ~] = fileparts(shortFilename);
+    filename = fullfile(pwd, [matlab.lang.makeValidName(f), '.m']);
 end
 
 end    
