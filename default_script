@@ -1,7 +1,5 @@
-%$NAME - One line description of what the script performs (H1 line)
-%   Optional file header info (to give more details about the function than in the H1 line)
-%   Optional file header info (to give more details about the function than in the H1 line)
-%   Optional file header info (to give more details about the function than in the H1 line)
+%$NAME - $h1
+%   $h2
 %
 %   Description:
 %       $NAME description
@@ -14,11 +12,10 @@
 %
 %   See also: OTHER_SCRIPT_NAME,  OTHER_FUNCTION_NAME
 
-%   Author:
-%   Address:
-%   email:
-%   Website: http://www.
+%   Author: $author
+%   email: $email
+%   Website: $website
 %   Date: $date; Last revision: $date
 %
-%   Copyright (c) $year, Author
+%   Copyright (c) $year, $author
 %   All rights reserved.

@@ -1,4 +1,4 @@
-function new(filetype, filename)
+function new(filetype, filename, options)
 %NEW - Open new m-file with both documented and dynamical headers
 %   This function creates a new class/function/script following the same
 %   behaviour as the "new file" desktop short-cut, except that headers are
@@ -99,6 +99,17 @@ function new(filetype, filename)
 arguments
     filetype (1,:) char {mustBeMember(filetype, {'class','function','script'})} = 'script'
     filename (1,:) char = ''
+    options.author (1,1) string {mustBeTextScalar} = "AUTHOR"
+    options.email (1,1) string {mustBeTextScalar} = "EMAIL@DOMAIN"
+    options.h1 (1,1) string {mustBeTextScalar} = "One line description"
+    options.h2 (1,1) string {mustBeTextScalar} = "Optional verbose description"
+    options.inputs string {mustBeText} = ""
+    options.outputs string {mustBeText} = ""
+    options.required_m_files string {mustBeText} = "none"
+    options.required_mat_files string {mustBeText} = "none"
+    options.other_functions string {mustBeText} = "OTHER_FUNCTION_NAME"
+    options.other_scripts string {mustBeText} = "OTHER_SCRIPT_NAME"
+    options.website (1,1) string {mustBeTextScalar} = "https://github.com/Neuro-Mechatronics-Interfaces"
 end
 
 
@@ -133,16 +144,66 @@ try
         
         if contains(line, '$name')
             line = strrep(line, '$name', filename);
-        elseif contains(line, '$NAME')
+        end
+        
+        if contains(line, '$NAME')
             line = strrep(line, '$NAME', upper(filename));
         end
         
         if contains(line, '$date')
             line = strrep(line, '$date', date);
-        elseif contains(line, '$year')
+        end
+
+        if contains(line, '$year')
             line = strrep(line, '$year', num2str(year(date)));
         end
         
+        if contains(line, '$author')
+            line = strrep(line, '$author', options.author);
+        end
+
+        if contains(line, '$email')
+            line = strrep(line, '$email', options.email);
+        end
+
+        if contains(line, '$h1')
+            line = strrep(line, '$h1', options.h1);
+        end
+
+        if contains(line, '$h2')
+            line = strrep(line, '$h2', options.h2);
+        end
+
+        line = parse_multiline_option(line, options, 'required_m_files', ", ");
+        line = parse_multiline_option(line, options, 'required_mat_files', ", ");
+        line = parse_multiline_option(line, options, 'other_scripts', ", ");
+        line = parse_multiline_option(line, options, 'other_functions', ", ");
+        
+        if contains(line, '$website')
+            line = strrep(line, '$website', options.website);
+        end
+
+        if strlength(options.inputs) > 0
+            tmp_in = options.inputs(1);
+            for ii = 1:numel(options.inputs)
+                tmp_in = strcat(tmp_in, ", ", options.inputs(ii));
+            end
+        else
+            tmp_in = option.inputs(1);
+        end
+        line = strrep(line, '$inputs', tmp_in);
+
+        if strlength(options.outputs) > 1
+            tmp_out = strcat("[ ", options.outputs(1));
+            for ii = 2:numel(options.outputs)
+                tmp_out = strcat(tmp_out, ", ", options.outputs(ii));
+            end
+            tmp_out = strcat(tmp_out, " ]");
+        else
+            tmp_out = options.outputs;
+        end
+        line = strrep(line, '$outputs', tmp_out);
+
         header = [header line 10]; %#ok<AGROW>
         line = fgetl(fid);
     end
@@ -160,5 +221,27 @@ function filename = getFileName(shortFilename)
     [~, f, ~] = fileparts(shortFilename);
     filename = fullfile(pwd, [matlab.lang.makeValidName(f), '.m']);
 end
+
+    function line = parse_multiline_option(line, options, name, delim)
+        if nargin < 4
+            delim = ", ";
+        end
+        matcher_lc = strcat('$', name);
+        if contains(line, matcher_lc)
+            tmp = options.(name)(1);
+            for k = 2:numel(options.(name))
+                tmp = strcat(tmp, delim, options.(name)(k));
+            end
+            line = strrep(line, matcher_lc, tmp);
+        end
+        matcher_uc = upper(matcher_lc);
+        if contains(line, matcher_uc)
+            tmp = upper(options.(name)(1));
+            for k = 2:numel(options.(name))
+                tmp = strcat(tmp, delim, upper(options.(name)(k)));
+            end
+            line = strrep(line, matcher_uc, tmp);
+        end
+    end
 
 end    
