@@ -133,89 +133,83 @@ if ~isempty(filename)
     file.saveAs(getFileName(filename));
 end
 
-try
+
+fid = fopen(default_template, 'r');
+line = fgetl(fid);
+header = [];
+[~, filename, ~] = fileparts(file.Filename);
+
+while ~feof(fid)
     
-    fid = fopen(default_template, 'r');
-    line = fgetl(fid);
-    header = [];
-    [~, filename, ~] = fileparts(file.Filename);
-    
-    while ~feof(fid)
-        
-        if contains(line, '$name')
-            line = strrep(line, '$name', filename);
-        end
-        
-        if contains(line, '$NAME')
-            line = strrep(line, '$NAME', upper(filename));
-        end
-        
-        if contains(line, '$date')
-            line = strrep(line, '$date', date);
-        end
-
-        if contains(line, '$year')
-            line = strrep(line, '$year', num2str(year(date)));
-        end
-        
-        if contains(line, '$author')
-            line = strrep(line, '$author', options.author);
-        end
-
-        if contains(line, '$email')
-            line = strrep(line, '$email', options.email);
-        end
-
-        if contains(line, '$h1')
-            line = strrep(line, '$h1', options.h1);
-        end
-
-        if contains(line, '$h2')
-            line = strrep(line, '$h2', options.h2);
-        end
-
-        line = parse_multiline_option(line, options, 'required_m_files', ", ");
-        line = parse_multiline_option(line, options, 'required_mat_files', ", ");
-        line = parse_multiline_option(line, options, 'other_scripts', ", ");
-        line = parse_multiline_option(line, options, 'other_functions', ", ");
-        
-        if contains(line, '$website')
-            line = strrep(line, '$website', options.website);
-        end
-
-        if strlength(options.inputs) > 0
-            tmp_in = options.inputs(1);
-            for ii = 1:numel(options.inputs)
-                tmp_in = strcat(tmp_in, ", ", options.inputs(ii));
-            end
-        else
-            tmp_in = option.inputs(1);
-        end
-        line = strrep(line, '$inputs', tmp_in);
-
-        if strlength(options.outputs) > 1
-            tmp_out = strcat("[ ", options.outputs(1));
-            for ii = 2:numel(options.outputs)
-                tmp_out = strcat(tmp_out, ", ", options.outputs(ii));
-            end
-            tmp_out = strcat(tmp_out, " ]");
-        else
-            tmp_out = options.outputs;
-        end
-        line = strrep(line, '$outputs', tmp_out);
-
-        header = [header line 10]; %#ok<AGROW>
-        line = fgetl(fid);
+    if contains(line, '$name')
+        line = strrep(line, '$name', filename);
     end
     
-    file.appendText(header);
-    fclose(fid);
+    if contains(line, '$NAME')
+        line = strrep(line, '$NAME', upper(filename));
+    end
     
-catch exception
+    if contains(line, '$date')
+        line = strrep(line, '$date', date);
+    end
+
+    if contains(line, '$year')
+        line = strrep(line, '$year', num2str(year(date)));
+    end
     
-    throw(exception)
+    if contains(line, '$author')
+        line = strrep(line, '$author', options.author);
+    end
+
+    if contains(line, '$email')
+        line = strrep(line, '$email', options.email);
+    end
+
+    if contains(line, '$h1')
+        line = strrep(line, '$h1', options.h1);
+    end
+
+    if contains(line, '$h2')
+        line = strrep(line, '$h2', options.h2);
+    end
+
+    line = parse_multiline_option(line, options, 'required_m_files', ", ");
+    line = parse_multiline_option(line, options, 'required_mat_files', ", ");
+    line = parse_multiline_option(line, options, 'other_scripts', ", ");
+    line = parse_multiline_option(line, options, 'other_functions', ", ");
     
+    if contains(line, '$website')
+        line = strrep(line, '$website', options.website);
+    end
+
+    if strlength(options.inputs) > 0
+        tmp_in = options.inputs(1);
+        for ii = 1:numel(options.inputs)
+            tmp_in = strcat(tmp_in, ", ", options.inputs(ii));
+        end
+    else
+        tmp_in = options.inputs(1);
+    end
+    line = strrep(line, '$inputs', tmp_in);
+
+    if strlength(options.outputs) > 1
+        tmp_out = strcat("[ ", options.outputs(1));
+        for ii = 2:numel(options.outputs)
+            tmp_out = strcat(tmp_out, ", ", options.outputs(ii));
+        end
+        tmp_out = strcat(tmp_out, " ]");
+    else
+        tmp_out = options.outputs;
+    end
+    line = strrep(line, '$outputs', tmp_out);
+
+    header = [char(header) char(line) 10]; 
+    line = fgetl(fid);
 end
+
+file.appendText(header);
+fclose(fid);
+
 
 function filename = getFileName(shortFilename)
     [~, f, ~] = fileparts(shortFilename);
