@@ -26,6 +26,7 @@ arguments
     options.EventsSubFolder {mustBeTextScalar} = 'EVENTS';
     options.MaxCommentRows (1,1) double = 20; % Max number of rows in file that can be commented
     options.UseHeuristic (1,1) logical = true; % Set false to use standard file selector when no filename is provided
+    options.UTCOffset (1,1) double = -4; % Pittsburgh during daylight savings time
 end
 
 if strcmpi(fname, 'none')
@@ -70,6 +71,8 @@ opts = delimitedTextImportOptions(...
     'CommentStyle', options.CommentCharacter);
 T = readtable(fname, opts);
 T.Time = datetime(T.Time,'ConvertFrom','posixtime', ...
-    'TimeZone','America/New_York');
+    'TimeZone','America/New_York', ...
+    'Format', 'uuuu-MM-dd''T''HH:mm:ss.SSS');
+T.Time = T.Time - hours(options.UTCOffset);
 T = table2timetable(T,'RowTimes','Time');
 end
