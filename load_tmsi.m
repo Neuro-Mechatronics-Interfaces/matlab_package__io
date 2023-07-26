@@ -61,6 +61,7 @@ arguments
     options.TriggerChannel (1,1) string = "TRIGGER"; % identifies the trigger channel based on channel name
     options.TriggerEpochSamples (1,2) double = [80, 160]; % Number of samples before and after each trigger to use when generating tensor
     options.TriggerEdge (1,1) string {mustBeMember(options.TriggerEdge, ["rising", "falling", "Rising", "Falling"])} = "Falling"; % Which edge-type to use for triggers
+    options.Tag {mustBeTextScalar} = '';
 end
 
 if (numel(BLOCK) > 1) || (numel(ARRAY) > 1)
@@ -86,7 +87,7 @@ end
 
 switch lower(string(type))
     case ".mat"
-        x = io.load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir);
+        x = io.load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir, verbose, 'Tag', options.Tag);
         info = [];
     case ".poly5"
         if nargout == 1

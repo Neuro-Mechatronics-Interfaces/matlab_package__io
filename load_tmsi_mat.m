@@ -1,4 +1,4 @@
-function x = load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir, verbose)
+function x = load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir, verbose, options)
 %LOAD_TMSI_MAT Loads "raw" data block that was saved via TMSiServer MATLAB API
 %
 % Syntax:
@@ -25,19 +25,23 @@ function x = load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir, verbose)
 %
 % See also: Contents, parseXML, TMSiSAGA.Poly5.read, io.load_tmsi_raw
 
-if nargin < 7
-    rootdir = parameters('raw_data_folder');
-end
-
-if nargin < 8
-    verbose = true;
+arguments
+    SUBJ {mustBeTextScalar}
+    YYYY (1,1) double
+    MM (1,1) double
+    DD (1,1) double
+    ARRAY {mustBeTextScalar}
+    BLOCK (1,1) double
+    rootdir {mustBeFolder, mustBeTextScalar} = parameters('raw_data_folder');
+    verbose (1,1) logical = true;
+    options.Tag {mustBeTextScalar} = '';
 end
 
 if (numel(BLOCK) > 1) || (numel(ARRAY) > 1)
     x = cell(numel(BLOCK), numel(ARRAY));
     for iB = 1:numel(BLOCK)
         for iA = 1:numel(ARRAY)
-            x{iB, iA} = io.load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY(iA), BLOCK(iB), rootdir, verbose); 
+            x{iB, iA} = io.load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY(iA), BLOCK(iB), rootdir, verbose, options); 
         end
     end
     x = vertcat(x{:});
@@ -50,7 +54,7 @@ if ~isnumeric(BLOCK)
     BLOCK = str2double(BLOCK);
 end
 
-f = utils.get_block_name(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, 'rootdir_raw', rootdir);
+f = utils.get_block_name(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, 'tag', options.Tag, 'rootdir_raw', rootdir);
 
 if exist(strcat(f.Raw.Block, '.mat'),'file')==0
     me = MException('io:missing_file:raw', ...
