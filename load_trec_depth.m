@@ -30,15 +30,16 @@ if exist(data_folder,'dir')==0
 end
 F = dir(fullfile(data_folder, '*.csv'));
 P = [];
+dt = datetime(YYYY, MM, DD, 'TimeZone', 'America/New_York');
 for iF = 1:numel(F)
-    tmp = importfile(fullfile(F(iF).folder,F(iF).name));
+    tmp = importfile(fullfile(F(iF).folder,F(iF).name), dt);
     P = [P; tmp]; %#ok<AGROW> 
 end
 P = sortrows(P, 'Time', 'ascend');
 delta = [diff(P.Drive1); 0];
 P(delta > options.ArtifactDelta,:) = []; % Remove artifact rows.
 
-    function Position = importfile(filename)
+    function Position = importfile(filename, rec_date)
         %IMPORTFILE Import data from a text file
         %  POSITION = IMPORTFILE(FILENAME) reads data from text file FILENAME
         %  for the default selection.  Returns the data as a table.
@@ -73,6 +74,7 @@ P(delta > options.ArtifactDelta,:) = []; % Remove artifact rows.
         
         Position = table2timetable(Position,'RowTimes','Time');
         Position.Time.TimeZone = 'America/New_York';
+        Position.Time = rec_date + hours(hour(Position.Time)) + minutes(minute(Position.Time)) + seconds(second(Position.Time));
         Position.Properties.VariableUnits = {'µm','µm'};
     end
 
