@@ -1,4 +1,4 @@
-function [x, info] = load_data(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, type, rootdir)
+function [x, info] = load_data(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, type, rootdir, options)
 %LOAD_DATA  API access-point for loading TMSi or Intan HD-EMG data. 
 %
 % Syntax:
@@ -29,8 +29,16 @@ function [x, info] = load_data(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, type, rootdir)
 % See also: Contents, parseXML, TMSiSAGA.Poly5.read, 
 %           io.load_tmsi_raw, io.load_tmsi_mat
 
-if nargin < 8
-    rootdir = parameters('raw_data_folder');
+arguments
+    SUBJ {mustBeTextScalar}
+    YYYY (1,1) double {mustBeNumeric, mustBeInteger}
+    MM (1,1) double {mustBeNumeric, mustBeInteger}
+    DD (1,1) double {mustBeNumeric, mustBeInteger}
+    ARRAY {mustBeTextScalar}
+    BLOCK {mustBeNumeric, mustBeInteger}
+    type {mustBeTextScalar, mustBeMember(type, {'.rhd', '.mat', '.poly5', 'rhd', 'mat', 'poly5'})} = '.mat'
+    rootdir {mustBeTextScalar, mustBeFolder} = 'R:/NMLShare/raw_data/primate'
+    options.Convert2TMSi (1,1) logical = false; 
 end
 
 if (numel(BLOCK) > 1) || (numel(ARRAY) > 1)
@@ -38,7 +46,8 @@ if (numel(BLOCK) > 1) || (numel(ARRAY) > 1)
     info = cell(numel(BLOCK), numel(ARRAY));
     for iB = 1:numel(BLOCK)
         for iA = 1:numel(ARRAY)
-            [x{iB, iA}, info{iB, iA}] = io.load_data(SUBJ, YYYY, MM, DD, ARRAY(iA), BLOCK(iB), type, rootdir); 
+            [x{iB, iA}, info{iB, iA}] = io.load_data(SUBJ, YYYY, MM, DD, ARRAY(iA), BLOCK(iB), type, rootdir, ...
+                'ConvertToTMSi', options.ConvertToTMSi); 
         end
     end
     x = vertcat(x{:});
@@ -57,7 +66,11 @@ end
 switch lower(type)
     case ".rhd"
         data = io.load_intan(SUBJ, YYYY, MM, DD, BLOCK, '.rhd', rootdir);
-        x = io.convert_intan_data_2_tmsi_format(data);
+        if options.Convert2TMSi
+            x = io.convert_intan_data_2_tmsi_format(data);
+        else
+            x = data;
+        end
         x.name = sprintf('%s_%04d_%02d_%02d_%d', SUBJ, YYYY, MM, DD, BLOCK);
 
     case ".mat"
