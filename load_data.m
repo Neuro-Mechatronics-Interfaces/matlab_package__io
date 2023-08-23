@@ -39,6 +39,7 @@ arguments
     type {mustBeTextScalar, mustBeMember(type, {'.rhd', '.mat', '.poly5', 'rhd', 'mat', 'poly5'})} = '.mat'
     rootdir {mustBeTextScalar, mustBeFolder} = 'R:/NMLShare/raw_data/primate'
     options.Convert2TMSi (1,1) logical = false; 
+    options.Tag {mustBeTextScalar} = '';
 end
 
 if (numel(BLOCK) > 1) || (numel(ARRAY) > 1)
@@ -47,7 +48,8 @@ if (numel(BLOCK) > 1) || (numel(ARRAY) > 1)
     for iB = 1:numel(BLOCK)
         for iA = 1:numel(ARRAY)
             [x{iB, iA}, info{iB, iA}] = io.load_data(SUBJ, YYYY, MM, DD, ARRAY(iA), BLOCK(iB), type, rootdir, ...
-                'ConvertToTMSi', options.ConvertToTMSi); 
+                'ConvertToTMSi', options.ConvertToTMSi, ...
+                'Tag', options.Tag); 
         end
     end
     x = vertcat(x{:});
@@ -74,7 +76,7 @@ switch lower(type)
         x.name = sprintf('%s_%04d_%02d_%02d_%d', SUBJ, YYYY, MM, DD, BLOCK);
 
     case ".mat"
-        x = io.load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir);
+        x = io.load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir, 'Tag', options.Tag);
         info = [];
     case ".poly5"
         if nargout == 1
