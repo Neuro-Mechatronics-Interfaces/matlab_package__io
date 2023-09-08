@@ -1,0 +1,3 @@
+[submodule "+enum"]
+	path = +enum
+	url = git@github.com:Neuro-Mechatronics-Interfaces/matlab_package__enum
