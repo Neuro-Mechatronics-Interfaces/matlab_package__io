@@ -198,6 +198,28 @@ switch options.ReturnAs
         if ~isstruct(x)
             x = convert_to_struct(x);
         end
+        TANK = sprintf('%s_%04d_%02d_%02d', SUBJ, YYYY, MM, DD);
+        TankFolder = fullfile(rootdir, SUBJ, TANK);
+        about_file = fullfile(TankFolder, 'about.yaml');
+        x.About = struct;
+        if exist(about_file, 'file')==2
+            about_recordings = io.yaml.loadFile(about_file);
+            plex_name = sprintf('%s_PLEX_%02d%02d%04d%03d', upper(SUBJ), MM, DD, YYYY, BLOCK);
+            if isfield(about_recordings, plex_name)
+                x.About.Note = about_recordings.(plex_name);
+            else
+                x.About.Note = "No record in `about.yaml` for this block.";
+            end
+            if isfield(about_recordings, "General_Notes")
+                x.About.General = about_recordings.General_Notes;
+            else
+                x.About.General = "No `General_Notes` field in `about.yaml` for this tank.";
+            end
+        else
+            x.About.Note = "No `about.yaml` for this tank.";
+            x.About.General = "No `about.yaml` for this tank.";
+        end
+
         return; % Do nothing else, this is the default.
     case "tensor"
         if ~isstruct(x)
