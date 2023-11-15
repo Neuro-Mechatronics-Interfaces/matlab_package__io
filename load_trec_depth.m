@@ -36,8 +36,8 @@ for iF = 1:numel(F)
     P = [P; tmp]; %#ok<AGROW> 
 end
 P = sortrows(P, 'Time', 'ascend');
-delta = [diff(P.Drive1); 0];
-P(delta > options.ArtifactDelta,:) = []; % Remove artifact rows.
+delta = [[diff(P.Drive1); 0], [diff(P.Drive2); 0]];
+P(any(abs(delta) > options.ArtifactDelta,2),:) = []; % Remove artifact rows.
 
     function Position = importfile(filename, rec_date)
         %IMPORTFILE Import data from a text file
@@ -71,10 +71,16 @@ P(delta > options.ArtifactDelta,:) = []; % Remove artifact rows.
         
         % Import the data
         Position = readtable(filename, opts);
+        Position.Time.TimeZone = 'America/New_York';
+        Position.Time = rec_date + hours(hour(Position.Time)) + minutes(minute(Position.Time)) + seconds(second(Position.Time));
+        dt_orig = diff(Position.Time);
+        iLoop = find([false; dt_orig < seconds(0)]);
+        for i_looped = 1:numel(iLoop)
+            Position.Time(iLoop(i_looped):end) = Position.Time(iLoop(i_looped):end) + hours(24);
+        end
         
         Position = table2timetable(Position,'RowTimes','Time');
         Position.Time.TimeZone = 'America/New_York';
-        Position.Time = rec_date + hours(hour(Position.Time)) + minutes(minute(Position.Time)) + seconds(second(Position.Time));
         Position.Properties.VariableUnits = {'µm','µm'};
     end
 
