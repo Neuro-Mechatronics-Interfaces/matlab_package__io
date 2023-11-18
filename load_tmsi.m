@@ -205,8 +205,15 @@ switch options.ReturnAs
         if exist(about_file, 'file')==2
             about_recordings = io.yaml.loadFile(about_file);
             plex_name = sprintf('%s_PLEX_%02d%02d%04d%03d', upper(SUBJ), MM, DD, YYYY, BLOCK);
+            if strlength(options.Tag) > 0
+                saga_name = sprintf('%s_%s_%d', TANK, options.Tag, BLOCK);
+            else
+                saga_name = sprintf('%s_%d', TANK, BLOCK);
+            end
             if isfield(about_recordings, plex_name)
                 x.About.Note = about_recordings.(plex_name);
+            elseif isfield(about_recordings, saga_name)
+                x.About.Note = about_recordings.(saga_name);
             else
                 x.About.Note = "No record in `about.yaml` for this block.";
             end
