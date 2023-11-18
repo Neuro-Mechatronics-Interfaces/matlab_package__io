@@ -1,5 +1,5 @@
 function T = load_wrist_task_training_summary(filename)
-%LOAD_WRIST_TASK_TRAINING_SUMMARY  Reads table of training history
+%LOAD_WRIST_TASK_TRAINING_SUMMARY Reads table of training history.
 %
 % Basically just calls readtable on the input filename or uses default file
 % if none is provided, and then assigns correct values to VariableUnits,

@@ -1,5 +1,5 @@
 function x = load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir, verbose, options)
-%LOAD_TMSI_MAT Loads "raw" data block that was saved via TMSiServer MATLAB API
+%LOAD_TMSI_MAT Loads "raw" data block that was saved via TMSiServer MATLAB API.
 %
 % Syntax:
 %   x = io.load_tmsi_mat(subj, yyyy, mm, dd, array, block, rootdir, verbose);
@@ -78,3 +78,4 @@ if verbose
     toc;
 end
 end
+

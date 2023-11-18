@@ -1,5 +1,5 @@
 function data = read_Intan_RHD2000_file(fname)
-% read_Intan_RHD2000_file
+%READ_INTAN_RHD2000_FILE Reads Intan RHD data format files into MATLAB.
 %
 % Version 3.0, 8 February 2021
 %

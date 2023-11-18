@@ -1,5 +1,5 @@
 function [x, info] = load_tmsi_raw(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir, verbose)
-%LOAD_TMSI_RAW Loads raw data block
+%LOAD_TMSI_RAW Loads raw data block.
 %
 % Syntax:
 %   [x, info] = io.load_tmsi_raw(subj, yyyy, mm, dd, array, block);
@@ -132,3 +132,4 @@ if verbose
     toc;
 end
 end
+

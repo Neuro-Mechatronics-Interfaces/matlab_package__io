@@ -1,5 +1,5 @@
 function params = load_wrist_task_parameters(SUBJ, YYYY, MM, DD, SESSION)
-%LOAD_WRIST_TASK_PARAMETERS  Import logging parameters for a given subject
+%LOAD_WRIST_TASK_PARAMETERS Import logging parameters for a given subject.
 %
 % Syntax:
 %   params = io.load_wrist_task_parameters(SUBJ, YYYY, MM, DD);

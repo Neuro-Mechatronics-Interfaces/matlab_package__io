@@ -1,5 +1,5 @@
 function offset = load_tmsi_triggers(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir)
-%LOAD_TMSI_TRIGGERS Loads TMSi sync triggers if they have been parsed
+%LOAD_TMSI_TRIGGERS Loads TMSi sync triggers if they have been parsed.
 %
 % Syntax:
 %   offset = io.load_tmsi_triggers(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir);
@@ -60,4 +60,5 @@ end
 offset = getfield(load(fname, 'offset'), 'offset');
 
 end
+
 

@@ -1,5 +1,5 @@
 function save_wrist_task_trial_data(TrialData, expr)
-%SAVE_WRIST_TASK_TRIAL_DATA  Saves trial data to generated data location on server
+%SAVE_WRIST_TASK_TRIAL_DATA Saves trial data to generated data location on server.
 %
 % Syntax:
 %   io.save_wrist_task_trial_data(TrialData, expr);

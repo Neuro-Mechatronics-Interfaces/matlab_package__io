@@ -1,5 +1,5 @@
 function sync = load_sync(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir)
-%LOAD_SYNC  Loads processed sync data
+%LOAD_SYNC Loads processed sync data.
 %
 % Syntax:
 %   sync = io.load_sync(SUBJ, YYYY, MM, DD, ARRAY, BLOCK)

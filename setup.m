@@ -1,3 +1,4 @@
+%SETUP Can run this to automatically get dependencies of +io package via git.
 clc;
 if exist('+io/.is_installed', 'file')~=0
     disp('Submodules have already been installed, no need to run setup.');
@@ -19,3 +20,4 @@ if status == 0
 else
     fprintf(1, 'Installation <strong>unsuccessful.</strong>\n\n'); 
 end
+

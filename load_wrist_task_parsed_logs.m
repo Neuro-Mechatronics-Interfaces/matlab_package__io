@@ -1,5 +1,5 @@
 function [Position, Logs, Header] = load_wrist_task_parsed_logs(SUBJ, YYYY, MM, DD, expr)
-%LOAD_WRIST_TASK_PARSED_LOGS  Load parsed position/logs/header data
+%LOAD_WRIST_TASK_PARSED_LOGS Load parsed position/logs/header data.
 %
 % Syntax:
 %   [Position, Logs, Header] = io.load_wrist_task_parsed_logs(SUBJ, YYYY, MM, DD, expr);

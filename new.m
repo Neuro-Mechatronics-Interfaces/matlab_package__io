@@ -1,5 +1,5 @@
 function new(filetype, filename, options)
-%NEW - Open new m-file with both documented and dynamical headers
+%NEW Open new m-file with both documented and dynamical headers
 %   This function creates a new class/function/script following the same
 %   behaviour as the "new file" desktop short-cut, except that headers are
 %   dynamically implemented, customizable and adapted for further code

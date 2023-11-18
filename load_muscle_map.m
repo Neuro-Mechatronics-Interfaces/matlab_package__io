@@ -1,5 +1,5 @@
 function m = load_muscle_map(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir)
-%LOAD_MUSCLE_MAP  Loads JSON muscle map object
+%LOAD_MUSCLE_MAP Loads JSON muscle map object.
 %
 % Syntax:
 %   m = io.load_muscle_map(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir);
@@ -62,3 +62,4 @@ m = io.JSON(mname);
 % fprintf(1, 'complete.\n');
 toc;
 end
+

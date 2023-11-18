@@ -1,5 +1,5 @@
 function h = parse_wrist_task_txt_header(fname)
-%PARSE_WRIST_TASK_TXT_HEADER  Parse header of TrialData.txt file
+%PARSE_WRIST_TASK_TXT_HEADER Parse header of TrialData.txt file.
 %
 % Syntax:
 %   h = io.parse_wrist_task_txt_header(fname);

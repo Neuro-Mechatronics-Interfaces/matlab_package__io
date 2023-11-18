@@ -1,5 +1,5 @@
 function data = load_tmsi_potentiometers(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, varargin)
-%LOAD_TMSI_POTENTIOMETERS  Loads potentiometer data specifically.
+%LOAD_TMSI_POTENTIOMETERS Loads ISO AUX-1 and ISO AUX-2 (potentiometers).  
 %
 % Syntax:
 %   data = io.load_tmsi_potentiometers(SUBJ, YYYY, MM, DD, ARRAY, BLOCK);
@@ -96,3 +96,4 @@ for ii = 1:numel(pars.dims)
     data = [data; in]; %#ok<AGROW>
 end
 end
+

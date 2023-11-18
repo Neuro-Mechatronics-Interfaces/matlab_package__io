@@ -1,5 +1,5 @@
 function [TrialData, H] = load_wrist_task_trial_data(SUBJ, YYYY, MM, DD)
-%LOAD_WRIST_TASK_TRIAL_DATA  Import data from a trial .txt file
+%LOAD_WRIST_TASK_TRIAL_DATA Import data from a trial .txt file.
 %
 %  Example:
 %  [TrialData, H] = io.load_wrist_task_trial_data("Rupert", 2021, 09, 16);
