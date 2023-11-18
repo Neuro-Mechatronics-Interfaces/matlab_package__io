@@ -219,7 +219,7 @@ switch options.ReturnAs
             x.About.Note = "No `about.yaml` for this tank.";
             x.About.General = "No `about.yaml` for this tank.";
         end
-
+        x.t = 0:(1/x.sample_rate):((size(x.samples,2)-1)/x.sample_rate);
         return; % Do nothing else, this is the default.
     case "tensor"
         if ~isstruct(x)
