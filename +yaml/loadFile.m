@@ -48,6 +48,7 @@ content = string(fileread(filePath));
 if options.ExpectPCapPayload
     content = string(strrep(char(content), ['!!binary |', newline, '      '], ''));
 end
+warning('off','MATLAB:javaclasspath:jarAlreadySpecified');
 result = io.yaml.load(content, "ConvertToArray", options.ConvertToArray);
-
+warning('on','MATLAB:javaclasspath:jarAlreadySpecified');
 end

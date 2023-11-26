@@ -45,6 +45,7 @@ arguments
     BLOCK (1,1) double = 0;
     options.EdgeDebounceSamples (1,1) double = 100;
     options.FileType {mustBeMember(options.FileType, [".mat", ".poly5", ".rhd", ".edf"])} = ".mat";
+    options.KeepFirstPulse (1,1) logical = false; 
     options.Tag {mustBeTextScalar} = '';
     options.PulseSampleWidthTolerance (1,1) double = 10; % Tolerance considered acceptable for width of first sync pulse in each record.
     options.SagaID (1,:) string = ["A", "B"]; % Identifier for SAGA units
@@ -62,7 +63,7 @@ x = io.load_tmsi(SUBJ, YYYY, MM, DD, options.SagaID(1), ...
 i_sync_channel = parse_sync_channel(x.channels, options.TriggerChannel, options.SagaID(1));
 bit_mask = 2^options.SyncBit;
 [pw_fixed, rising_fixed] = get_sync_pulse_samples(x.samples(i_sync_channel,:), ...
-    bit_mask, options.EdgeDebounceSamples, options.SyncPulseIndex);
+    bit_mask, options.EdgeDebounceSamples, options.SyncPulseIndex, options.KeepFirstPulse);
 
 saga = x;
 saga.name = strrep(saga.name, sprintf('_%s_', options.SagaID(1)), '_*_');
@@ -74,10 +75,10 @@ for ii = 2:numel(options.SagaID)
         'Tag', options.Tag);
     i_sync_channel = parse_sync_channel(x.channels, options.TriggerChannel, options.SagaID(ii));
     [pw_shift, rising_shift] = get_sync_pulse_samples(x.samples(i_sync_channel,:), ...
-        bit_mask, options.EdgeDebounceSamples, options.SyncPulseIndex);
+        bit_mask, options.EdgeDebounceSamples, options.SyncPulseIndex, options.KeepFirstPulse);
     if abs(pw_fixed - pw_shift) > options.PulseSampleWidthTolerance
-        error("Pulse width for SAGA-%s is different from SAGA-%s by > %d samples--is it encapsulated by both records?\n\t(You can try changing 'SyncPulseIndex' option if multiple sync pulses should exist in each SAGA record, which may fix this issue).", ...
-            options.SagaID(ii), options.SagaID(1), options.PulseSampleWidthTolerance)
+        error("Pulse width for SAGA-%s (%d) is different from SAGA-%s (%d) by > %d samples--is it encapsulated by both records?\n\t(You can try changing 'SyncPulseIndex' option if multiple sync pulses should exist in each SAGA record, which may fix this issue).", ...
+            options.SagaID(ii), pw_shift, options.SagaID(1), pw_fixed, options.PulseSampleWidthTolerance)
     end
 
     delta_rising = rising_shift - rising_fixed;
@@ -106,7 +107,7 @@ saga.bip = find(cellfun(@(C)contains(upper(C.name),'BIP'),saga.channels));
 saga.aux = find(cellfun(@(C)contains(upper(C.name),'AUX'),saga.channels));
 saga.triggers = find(cellfun(@(C)contains(upper(C.name), upper(options.TriggerChannel)),saga.channels));
 
-    function [pw, rising] = get_sync_pulse_samples(trigger_data, bit_mask, debounce_samples, sync_pulse_index)
+    function [pw, rising] = get_sync_pulse_samples(trigger_data, bit_mask, debounce_samples, sync_pulse_index, keep_first_pulse)
         %GET_SYNC_PULSE_SAMPLES Helper to get sync pulse width and rising edge index for the indexed synchronization pulse.
         sync = bitand(trigger_data, bit_mask)==0;
         all_high = find(sync > 0);
@@ -117,10 +118,14 @@ saga.triggers = find(cellfun(@(C)contains(upper(C.name), upper(options.TriggerCh
         if isempty(all_high)
             error("Could not find any sync pulse LOW values--was sync pulse set and/or bit configuration and channel ID correct?");
         end
-        rising = all_high([false, (diff(all_high) > debounce_samples)]);
+        rising = all_high([keep_first_pulse, (diff(all_high) > debounce_samples)]);
         rising = rising(sync_pulse_index);
-        falling = all_low([false, (diff(all_low) > debounce_samples)]);
-        falling = falling(sync_pulse_index);
+        falling = all_low([keep_first_pulse, (diff(all_low) > debounce_samples)]);
+        if (falling(sync_pulse_index) < rising) && any(falling > rising)
+            falling = falling(find(falling > rising, 1, 'first'));
+        else
+            falling = falling(sync_pulse_index);
+        end
         pw = falling - rising;
     end
 
