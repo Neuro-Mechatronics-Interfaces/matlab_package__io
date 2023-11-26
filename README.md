@@ -14,6 +14,21 @@ git submodule add git@github.com:Neuro-Mechatronics-Interfaces/matlab_package__i
 This will add the folder with the correct package name.
 
 ## Contents ##
+* [Classes](#classes)
+* [Primary Functions](#primary-functions)
+* [Exporters](#exporters)
+* [General Utility](#general-utility)
+* [GUIs](#guis)
+* [Impedance-Handling](#impedance-handling)
+* [Intan-Specific](#intan-specific)
+* [LSL-Specific](#lsl-specific)
+* [Message-Capture](#message-capture)
+* [Microdrive-Specific](#microdrive-specific)
+* [Stimulation-Experiment-Specific](#stimulation-experiment-specific)
+* [ROS2-Specific](#ros2-specific)
+* [TMSi-Specific](#tmsi-specific)
+* [Wrist-Task-Specific](#wrist-task-specific)
+* [Installer](#installer) *(may be deprecated)*
 
 ### Classes ###  
  + [`JSON`](JSON.m) - Class to access contents of JSON file.  
@@ -48,7 +63,7 @@ This will add the folder with the correct package name.
 ### LSL-Specific ###  
  + [`load_xdf`](load_xdf.m) - Import an XDF file.  
 
-### Loaders for Message-Capture Logs ###  
+### Message-Capture ###  
  + [`load_uevt`](load_uevt.m) - Load .uevt file (which contains wrist task behavior events).  
  + [`pcap2matlab`](pcap2matlab.m) - Imports network protocol analyzer capabilties into MATLAB.  
  + [`read_events`](read_events.m) - Reads in "events-export.csv" file for a given session.  
@@ -60,6 +75,9 @@ This will add the folder with the correct package name.
  + [`load_block_hd_emg`](load_block_hd_emg.m) - Loads processed data block.  
  + [`load_block_simulation`](load_block_simulation.m) - Loads simulated field data associated with a given experimental block.  
  + [`load_percept_data`](load_percept_data.m) - Load percept yaml data for a given subject collected using perceptMapper variant for N3 analyses.  
+
+### ROS2-Specific ###  
+ + [`load_rosbag`](load_rosbag.m) - Loads data saved in raw_data in .mat format after parsing from .db3 bag files.  
 
 ### TMSi-Specific ###  
  + [`convert_intan_data_2_tmsi_format`](convert_intan_data_2_tmsi_format.m) - Convert Intan data to TMSi format.  

@@ -1,5 +1,5 @@
 function write_wrist_xy_2_sto(filename, x, y, options)
-%WRITE_TABLE_2_STO  Write data from wrist task into .sto format for OpenSim.
+%WRITE_WRIST_XY_2_STO Write data from wrist task into .sto format for OpenSim.
 % 
 % Syntax:
 %   io.write_wrist_xy_2_sto(filename, x, y, 'Name', value, ...);

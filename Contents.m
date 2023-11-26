@@ -1,7 +1,7 @@
 % +IO  Handles loading disk file data, repositories, and configurations.
 %
 % Classes
-%   JSON                               - Class to access contents of JSON file.
+%   JSON                                 - Class to access contents of JSON file.
 % 
 % Primary Functions
 %   load_data                            - API access-point for loading TMSi or Intan HD-EMG data. 
@@ -33,8 +33,8 @@
 % LSL-Specific
 %   load_xdf                             - Import an XDF file.
 %
-% Loaders for Message-Capture Logs
-%   load_uevt                               - Load .uevt file (which contains wrist task behavior events)
+% Message-Capture
+%   load_uevt                            - Load .uevt file (which contains wrist task behavior events)
 %   pcap2matlab                          - Imports network protocol analyzer capabilties into MATLAB.
 %   read_events                          - Reads in "events-export.csv" file for a given session.
 %
@@ -42,42 +42,47 @@
 %   load_trec_depth                      - Loads timetable with TREC drive depth information.
 %
 % Stimulation-Experiment-Specific
-%   load_block_hd_emg                       - Loads processed data block
+%   load_block_hd_emg                    - Loads processed data block
 %   load_block_simulation                - Loads simulated field data associated with a given experimental block.
 %   load_percept_data                    - Load percept yaml data for a given subject collected using perceptMapper variant for N3 analyses.
 %
+% ROS2-Specific
+%   load_rosbag                          - Loads data saved in raw_data in .mat format after parsing from .db3 bag files.
+%
 % TMSi-Specific
-%   convert_intan_data_2_tmsi_format   - Convert Intan data to TMSi format
+%   convert_intan_data_2_tmsi_format     - Convert Intan data to TMSi format
 %   load_align_saga_data                 - Loads data from 2 TMSi-SAGA and aligns samples
-%   load_tmsi                          - API access-point for `load_tmsi_mat` or `load_tmsi_raw`. 
-%   load_tmsi_channel                  - Loads TMSi channel if it has been parsed
-%   load_tmsi_mat                      - Loads "raw" data block that was saved via TMSiServer MATLAB API.
-%   load_tmsi_potentiometers           - Loads ISO AUX-1 and ISO AUX-2 (potentiometers).  
-%   load_tmsi_raw                      - Loads raw data block.
-%   load_tmsi_triggers                 - Loads TMSi sync triggers if they have been parsed.
-%   parse_polybench_data_manager_notes - Parse notes taken in Polybench Data Manager.
+%   load_tmsi                            - API access-point for `load_tmsi_mat` or `load_tmsi_raw`. 
+%   load_tmsi_channel                    - Loads TMSi channel if it has been parsed
+%   load_tmsi_mat                        - Loads "raw" data block that was saved via TMSiServer MATLAB API.
+%   load_tmsi_potentiometers             - Loads ISO AUX-1 and ISO AUX-2 (potentiometers).  
+%   load_tmsi_raw                        - Loads raw data block.
+%   load_tmsi_triggers                   - Loads TMSi sync triggers if they have been parsed.
+%   parse_polybench_data_manager_notes   - Parse notes taken in Polybench Data Manager.
 % 
 % Wrist-Task-Specific
-%   load_aligned_target_data                - Loads target-aligned data
-%   load_task                               - Load task state machine.
-%   load_uevt                               - Load .uevt file (which contains wrist task behavior events)
-%   load_wrist_event_table_trial            - Load a wrist center-out task trial from event table.
-%   load_wrist_task_parameters              - Import logging parameters for a given subject.
-%   load_wrist_task_parsed_logs             - Load parsed position/logs/header data.
-%   load_wrist_task_training_summary        - Reads table of training history.
-%   load_wrist_task_raw_logs                - Import data from a text file.
-%   load_wrist_task_trial_data              - Import data from a trial .txt file.
-%   load_wrist_task_trial_logs              - Import data from trial .logs file.
-%   parse_wrist_task_position_parameters    - Returns parameters table associated with `Position` timetable.
-%   parse_wrist_task_trials                 - Return Trial timetable from Logs timetable.
-%   parse_wrist_task_txt_header             - Parse header of TrialData.txt file.
-%   save_parsed_wrist_task_logs             - Save parsed behavioral logging to generated_data on server.
-%   save_wrist_task_trial_data              - Saves trial data to generated data location on server.
-%   TimeoutEventData                        - Issued as part of a timer callback event.
+%   load_aligned_target_data             - Loads target-aligned data
+%   load_task                            - Load task state machine.
+%   load_uevt                            - Load .uevt file (which contains wrist task behavior events)
+%   load_wrist_event_table_trial         - Load a wrist center-out task trial from event table.
+%   load_wrist_task_parameters           - Import logging parameters for a given subject.
+%   load_wrist_task_parsed_logs          - Load parsed position/logs/header data.
+%   load_wrist_task_training_summary     - Reads table of training history.
+%   load_wrist_task_raw_logs             - Import data from a text file.
+%   load_wrist_task_trial_data           - Import data from a trial .txt file.
+%   load_wrist_task_trial_logs           - Import data from trial .logs file.
+%   parse_wrist_task_position_parameters - Returns parameters table associated with `Position` timetable.
+%   parse_wrist_task_trials              - Return Trial timetable from Logs timetable.
+%   parse_wrist_task_txt_header          - Parse header of TrialData.txt file.
+%   save_parsed_wrist_task_logs          - Save parsed behavioral logging to generated_data on server.
+%   save_wrist_task_trial_data           - Saves trial data to generated data location on server.
+%   TimeoutEventData                     - Issued as part of a timer callback event.
 % 
 % Installer
 %   batch_import_modules                 - Use `repos` struct to init a bunch of git submodules.
 %   batch_import_repos                   - Use `repos` struct to clone bunch of git repos.
 %   read_repos_list                      - Get list of all repos in `.repos` file.
 %   setup                                - Can run this to automatically get dependencies of +io package via git.
+
+
 
