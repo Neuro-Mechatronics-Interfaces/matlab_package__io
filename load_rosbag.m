@@ -64,7 +64,8 @@ bag.meta = struct(...
     'Tank', TANK, ...
     'InputFolder', tank_folder, ...
     'OutputFolder', output_folder);
-
+bag.start_time = datetime(bag.start_time);
+bag.start_time.TimeZone = 'America/New_York';
 
 % Add in any metadata parsing that is helpful when pulling in the data,
 % here, so that it comes in as part of the "bag" struct (i.e. when parsing
