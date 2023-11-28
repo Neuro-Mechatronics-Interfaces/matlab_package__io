@@ -48,7 +48,7 @@ arguments
     options.KeepFirstPulse (1,1) logical = false; 
     options.Tag {mustBeTextScalar} = '';
     options.PulseSampleWidthTolerance (1,1) double = 10; % Tolerance considered acceptable for width of first sync pulse in each record.
-    options.RawDataRoot {mustBeTextScalar} = "R:/NMLShare/raw_data/primate";
+    options.RawDataRoot {mustBeTextScalar} = "";
     options.SagaID (1,:) string = ["A", "B"]; % Identifier for SAGA units
     options.SyncBit (1,1) double = 1;
     options.SyncPulseIndex (1,1) double = 1; % Can try changing this if the first sync pulse isn't in both records but multiple pulses exist in each record (i.e. so you can check later ones).
@@ -56,10 +56,16 @@ arguments
     options.Verbose (1,1) logical = true;
 end
 
+if strlength(options.RawDataRoot)==0
+    raw_data_root = parameters('raw_data_folder');
+else
+    raw_data_root = options.RawDataRoot;
+end
+
 x = io.load_tmsi(SUBJ, YYYY, MM, DD, options.SagaID(1), ...
     BLOCK, ...
     options.FileType, ...
-    options.RawDataRoot, ...
+    raw_data_root, ...
     options.Verbose, ...
     'Tag', options.Tag);
 i_sync_channel = parse_sync_channel(x.channels, options.TriggerChannel, options.SagaID(1));
