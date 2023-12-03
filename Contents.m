@@ -6,6 +6,7 @@
 % Primary Functions
 %   load_data                            - API access-point for loading TMSi or Intan HD-EMG data. 
 %   load_tmsi                            - API access-point for `load_tmsi_mat` or `load_tmsi_raw`. 
+%   load_spikes                          - Load spikes that have been exported via batch pipeline.
 %
 % Exporters
 %   configure                            - Write and return configuration JSON object for a given session
@@ -83,6 +84,3 @@
 %   batch_import_repos                   - Use `repos` struct to clone bunch of git repos.
 %   read_repos_list                      - Get list of all repos in `.repos` file.
 %   setup                                - Can run this to automatically get dependencies of +io package via git.
-
-
-

@@ -36,6 +36,7 @@ This will add the folder with the correct package name.
 ### Primary Functions ###  
  + [`load_data`](load_data.m) - API access-point for loading TMSi or Intan HD-EMG data.  
  + [`load_tmsi`](load_tmsi.m) - API access-point for `load_tmsi_mat` or `load_tmsi_raw`.  
+ + [`load_spikes`](load_spikes.m) - Load spikes that have been exported via batch pipeline.  
 
 ### Exporters ###  
  + [`configure`](configure.m) - Write and return configuration JSON object for a given session.  
