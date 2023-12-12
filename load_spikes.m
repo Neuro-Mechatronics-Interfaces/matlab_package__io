@@ -211,9 +211,9 @@ switch nargout
             if has_data(ii)
                 spikes_folder = fullfile(spikes_folder_root, num2str(BLOCK(ii)));
                 if singleton_channel
+                    spk{ii} = load(fullfile(spikes_folder, sprintf(expr,TANK,BLOCK(ii),channels,id_s)),'pks','snips');
+                    clus{ii} = load(fullfile(spikes_folder,  sprintf(expr,TANK,BLOCK(ii),channels,id_c)),'clus','s');
                     if options.Verbose
-                        spk{ii} = load(fullfile(spikes_folder, sprintf(expr,TANK,BLOCK(ii),channels,id_s)),'pks','snips');
-                        clus{ii} = load(fullfile(spikes_folder,  sprintf(expr,TANK,BLOCK(ii),channels,id_c)),'clus','s');
                         i_cur = i_cur + 1;
                         fprintf(1,'\b\b\b\b\b%03d%%\n', round(100*i_cur/NTOT));
                     end
