@@ -241,15 +241,17 @@ switch options.ReturnAs
             end
             if options.InterpolateMissingSamples
                 tq = 0:(1/x.sample_rate):x.t(end);
-                if sum(ismembertol(tq,x.t)) < numel(tq)
+                idx_tq = ismembertol(tq,x.t);
+                if sum(idx_tq) < numel(tq)
                     if verbose
                         fprintf(1,'Missing samples will be interpolated.\n');
                     end
+                    tq = sort([tq(idx_tq), x.t],'ascend');
                     samplesq = zeros(size(x.samples,1),numel(tq));
                     for ii = 1:size(x.samples,1)
                         switch x.channels{ii}.type
                             case {1, 2, 3, 4} % 'UNI', 'BIP', or 'AUX' can be interpolated using spline or polynomial
-                                samplesq(ii,:) = interp1(x.t, x.samples(ii,:), tq, 'spline', 0);
+                                samplesq(ii,:) = interp1(x.t, x.samples(ii,:), tq, 'makima', 0);
                             case {5, 6} % Digital logic channels (TRIGGERS, STATUS, COUNTER) should use 'nearest'
                                 samplesq(ii,:) = interp1(x.t, x.samples(ii,:), tq, 'nearest', 0);
                         end
