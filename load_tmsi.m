@@ -57,6 +57,7 @@ arguments
     
     % For use with "tensor" ReturnAs option:
     options.CounterChannelName {mustBeTextScalar} = 'COUNTER';
+    options.InterpolateMissingSamples (1,1) logical = false;
     options.KeepCounterStartOffset (1,1) logical = false; % Set true to keep offset from counter channel in the generated .t field for timing
     options.GeneratedFolder (1,1) string = string(parameters('generated_data_folder')); % where to load previously-parsed sync from
     options.SyncBit (1,1) double = 9; % if sync not yet parsed, then use this bit with the TriggerChannel samples to parse it
@@ -237,6 +238,29 @@ switch options.ReturnAs
                 x.t = x.samples(i_counter,:)./x.sample_rate;
             else
                 x.t = (x.samples(i_counter,:)-x.samples(i_counter,1))./x.sample_rate;
+            end
+            if options.InterpolateMissingSamples
+                tq = 0:(1/x.sample_rate):x.t(end);
+                if sum(ismembertol(tq,x.t)) < numel(tq)
+                    if verbose
+                        fprintf(1,'Missing samples will be interpolated.\n');
+                    end
+                    samplesq = zeros(size(x.samples,1),numel(tq));
+                    for ii = 1:size(x.samples,1)
+                        switch x.channels{ii}.type
+                            case {1, 2, 3, 4} % 'UNI', 'BIP', or 'AUX' can be interpolated using spline or polynomial
+                                samplesq(ii,:) = interp1(x.t, x.samples(ii,:), tq, 'spline', 0);
+                            case {5, 6} % Digital logic channels (TRIGGERS, STATUS, COUNTER) should use 'nearest'
+                                samplesq(ii,:) = interp1(x.t, x.samples(ii,:), tq, 'nearest', 0);
+                        end
+                    end
+                    x.samples = samplesq;
+                    x.t = tq;
+                else
+                    if verbose
+                        fprintf(1,'No missing samples to interpolate.\n');
+                    end
+                end
             end
         end
         return; % Do nothing else, this is the default.
