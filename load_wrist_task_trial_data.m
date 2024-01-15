@@ -66,8 +66,8 @@ for iF = 1:numel(F)
         
         continue;
     end
-    x((x.Last_Task_State==TaskState.T1_INSTRUCT_V1) | ...
-      (x.Last_Task_State==TaskState.T1_HOLD_1) , :) = [];
+    x((x.Last_Task_State==enum.TaskState.T1_INSTRUCT_V1) | ...
+      (x.Last_Task_State==enum.TaskState.T1_HOLD_1) , :) = [];
     [~, name, ~] = fileparts(F(iF).name);
     str_info = strsplit(name, '_');
     n = size(x, 1);

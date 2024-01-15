@@ -41,7 +41,7 @@ if (numel(BLOCK) > 1) || (numel(ARRAY) > 1)
     x = cell(numel(BLOCK), numel(ARRAY));
     for iB = 1:numel(BLOCK)
         for iA = 1:numel(ARRAY)
-            x{iB, iA} = io.load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY(iA), BLOCK(iB), rootdir, verbose, options); 
+            x{iB, iA} = io.load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY(iA), BLOCK(iB), rootdir, verbose, 'Tag', options.Tag); 
         end
     end
     x = vertcat(x{:});

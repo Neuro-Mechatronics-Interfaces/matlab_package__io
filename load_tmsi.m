@@ -56,6 +56,8 @@ arguments
     options.ReturnAs (1,1) string {mustBeMember(options.ReturnAs, ["struct", "tensor"])} = "struct" % to directly convert to other sample data format (e.g. "tensor") 
     
     % For use with "tensor" ReturnAs option:
+    options.CounterChannelName {mustBeTextScalar} = 'COUNTER';
+    options.KeepCounterStartOffset (1,1) logical = false; % Set true to keep offset from counter channel in the generated .t field for timing
     options.GeneratedFolder (1,1) string = string(parameters('generated_data_folder')); % where to load previously-parsed sync from
     options.SyncBit (1,1) double = 9; % if sync not yet parsed, then use this bit with the TriggerChannel samples to parse it
     options.TriggerChannel (1,1) string = "TRIGGER"; % identifies the trigger channel based on channel name
@@ -226,7 +228,17 @@ switch options.ReturnAs
             x.About.Note = "No `about.yaml` for this tank.";
             x.About.General = "No `about.yaml` for this tank.";
         end
-        x.t = 0:(1/x.sample_rate):((size(x.samples,2)-1)/x.sample_rate);
+        i_counter = cellfun(@(C)strcmpi(C.name,options.CounterChannelName),x.channels);
+        if sum(i_counter)~=1
+            warning('No counter channel found: using sample rate only to generate assumed time vector.');
+            x.t = 0:(1/x.sample_rate):((size(x.samples,2)-1)/x.sample_rate);
+        else
+            if options.KeepCounterStartOffset
+                x.t = x.samples(i_counter,:)./x.sample_rate;
+            else
+                x.t = (x.samples(i_counter,:)-x.samples(i_counter,1))./x.sample_rate;
+            end
+        end
         return; % Do nothing else, this is the default.
     case "tensor"
         if ~isstruct(x)
