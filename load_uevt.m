@@ -65,6 +65,7 @@ arguments
     options.Day (1,1) double = day(today);
     options.Orientation {mustBeTextScalar, mustBeMember(options.Orientation, {'MID', 'PRO'})} = 'MID';
     options.EnumeratedEvents (:,2) string = ["State", "TaskState"; "Target", "TaskTarget"; "Outcome", "TaskOutcome"; "Direction", "TaskDirection"; "Target", "TaskTarget"; "Orientation", "TaskOrientation"];
+    options.Verbose (1,1) logical = true;
 end
 
 if strcmpi(options.File, 'none')
@@ -97,12 +98,19 @@ if strcmpi(options.File, 'none')
         end
     end
 end
-
+if exist(fname,'file')==0
+    T = [];
+    E = {};
+    if options.Verbose
+        fprintf(1,'No such file: %s\n', fname);
+    end
+    return;
+end
 fid = fopen(fname, 'r');
 s = textscan(fid,'%s', 'Delimiter', {'\n', '\r'});
 fclose(fid);
 iComment = cellfun(@(c)startsWith(c, options.CommentCharacter), s{1});
-iHeader = find(iComment(1:options.MaxCommentRows));
+iHeader = find(iComment(1:min(options.MaxCommentRows,numel(iComment))));
 if isempty(iHeader)
     if startsWith(s{1}{1}, 'Time')
         opts = delimitedTextImportOptions(...
@@ -121,7 +129,8 @@ if isempty(iHeader)
             'Delimiter', ',', ...
             'CommentStyle', options.CommentCharacter);
     end
-    meta = struct;
+    [~,f,~] = fileparts(fname);
+    meta = struct('Experiment', f);
 else
     if numel(iHeader) >= 3
         meta = struct(...
