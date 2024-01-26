@@ -32,6 +32,7 @@ This will add the folder with the correct package name.
 
 ### Classes ###  
  + [`JSON`](JSON.m) - Class to access contents of JSON file.  
+ + [`TimeoutEventData`](TimeoutEventData.m) - Issued as part of a timer callback event.  
 
 ### Primary Functions ###  
  + [`load_data`](load_data.m) - API access-point for loading TMSi or Intan HD-EMG data.  
@@ -54,6 +55,7 @@ This will add the folder with the correct package name.
 
 ### Impedance-Handling ###  
  + [`load_impedance`](load_impedance.m) - Load impedance if it's been parsed in generated_data.  
+ + [`load_nanoz`](load_nanoz.m) - Loads electrode impedances table struct for NanoZ measurements.  
  + [`process_raw_impedances`](process_raw_impedances.m) - Process impedances from "raw" format.  
 
 ### Intan-Specific ###  
@@ -93,6 +95,8 @@ This will add the folder with the correct package name.
 
 ### Wrist-Task-Specific ###  
  + [`load_aligned_target_data`](load_aligned_target_data.m) - Loads target-aligned data.  
+ + [`load_combined`](load_combined.m) - Load spikes that have been clustered across all trials and combined with cluster index indicator, as exported via batch pipeline.  
+ + [`load_cursor`](load_cursor.m) - Loads timetable with TREC drive depth information.  
  + [`load_task`](load_task.m) - Load task state machine.  
  + [`load_uevt`](load_uevt.m) - Load .uevt file (which contains wrist task behavior events).  
  + [`load_wrist_event_table_trial`](load_wrist_event_table_trial.m) - Load a wrist center-out task trial from event table.  
@@ -102,12 +106,13 @@ This will add the folder with the correct package name.
  + [`load_wrist_task_raw_logs`](load_wrist_task_raw_logs.m) - Import data from a text file.  
  + [`load_wrist_task_trial_data`](load_wrist_task_trial_data.m) - Import data from a trial .txt file.  
  + [`load_wrist_task_trial_logs`](load_wrist_task_trial_logs.m) - Import data from trial .logs file.  
+ + [`parse_cursor`](parse_cursor.m) - Import data from a text file.  
  + [`parse_wrist_task_position_parameters`](parse_wrist_task_position_parameters.m) - Returns parameters table associated with `Position` timetable.  
  + [`parse_wrist_task_trials`](parse_wrist_task_trials.m) - Return Trial timetable from Logs timetable.  
  + [`parse_wrist_task_txt_header`](parse_wrist_task_txt_header.m) - Parse header of TrialData.txt file.  
  + [`save_parsed_wrist_task_logs`](save_parsed_wrist_task_logs.m) - Save parsed behavioral logging to generated_data on server.  
  + [`save_wrist_task_trial_data`](save_wrist_task_trial_data.m) - Saves trial data to generated data location on server.  
- + [`TimeoutEventData`](TimeoutEventData.m) - Issued as part of a timer callback event.  
+ + [`uevt_2_behavior_data`](uevt_2_behavior_data.m) - Convert .uevt files to basic behavior data tables.  
 
 ### Installer ###  
  + [`batch_import_modules`](batch_import_modules.m) - Use `repos` struct to init a bunch of git submodules.  

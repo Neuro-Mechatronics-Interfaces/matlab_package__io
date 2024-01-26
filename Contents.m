@@ -2,6 +2,7 @@
 %
 % Classes
 %   JSON                                 - Class to access contents of JSON file.
+%   TimeoutEventData                     - Issued as part of a timer callback event.
 % 
 % Primary Functions
 %   load_data                            - API access-point for loading TMSi or Intan HD-EMG data. 
@@ -24,6 +25,7 @@
 % 
 % Impedance-Handling
 %   load_impedance                       - Load impedance if it's been parsed in generated_data
+%   load_nanoz                           - Loads electrode impedances table struct for NanoZ measurements.
 %   process_raw_impedances               - Process impedances from "raw" format.
 %
 % Intan-Specific
@@ -63,6 +65,8 @@
 % 
 % Wrist-Task-Specific
 %   load_aligned_target_data             - Loads target-aligned data
+%   load_combined                        - Load spikes that have been clustered across all trials and combined with cluster index indicator, as exported via batch pipeline.
+%   load_cursor                          - Loads timetable with TREC drive depth information.
 %   load_task                            - Load task state machine.
 %   load_uevt                            - Load .uevt file (which contains wrist task behavior events)
 %   load_wrist_event_table_trial         - Load a wrist center-out task trial from event table.
@@ -72,12 +76,13 @@
 %   load_wrist_task_raw_logs             - Import data from a text file.
 %   load_wrist_task_trial_data           - Import data from a trial .txt file.
 %   load_wrist_task_trial_logs           - Import data from trial .logs file.
+%   parse_cursor                         - Import data from a text file
 %   parse_wrist_task_position_parameters - Returns parameters table associated with `Position` timetable.
 %   parse_wrist_task_trials              - Return Trial timetable from Logs timetable.
 %   parse_wrist_task_txt_header          - Parse header of TrialData.txt file.
 %   save_parsed_wrist_task_logs          - Save parsed behavioral logging to generated_data on server.
 %   save_wrist_task_trial_data           - Saves trial data to generated data location on server.
-%   TimeoutEventData                     - Issued as part of a timer callback event.
+%   uevt_2_behavior_data                 - Convert .uevt files to basic behavior data tables
 % 
 % Installer
 %   batch_import_modules                 - Use `repos` struct to init a bunch of git submodules.
