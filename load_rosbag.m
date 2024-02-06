@@ -56,6 +56,33 @@ if exist(output_folder, 'dir')==0
     end
 end
 
+file_path = fullfile(tank_folder, sprintf('%s_%s_%s_%d.mat', ...
+    TANK, options.Identifier, options.Tag, BLOCK));
+fprintf("Searching for bag file <strong>%s</strong>...",TANK)
+if ~isfile(file_path)
+    % 'bag' files may be saved in a subfolder with a unique 'YYMMDD_HHMMSS'
+    % datetime naming convention. Check if that folder exists
+    located_file = false;
+    d = dir(tank_folder);
+    dfolders = d([d(:).isdir]);
+    dfolders = dfolders(~ismember({dfolders(:).name},{'.','..'})); % remove '.' and '..'
+    for i=1:length(dfolders)
+        file_path = fullfile(tank_folder, dfolders(i).name, sprintf('%s_%s_%s_%d.mat', ...
+            TANK, options.Identifier, options.Tag, BLOCK));
+        if isfile(file_path)
+            located_file = true;
+            tank_folder = fullfile(tank_folder, dfolders(i).name);
+            break
+        end
+    end
+    if ~located_file
+        fprintf("Could not locate bag file for <strong>%s</strong>\n",TANK);
+        bag = [];
+        return
+    end
+
+end
+fprintf("found: loading file")
 bag = load(fullfile(tank_folder, sprintf('%s_%s_%s_%d.mat', ...
     TANK, options.Identifier, options.Tag, BLOCK)));
 bag.meta = struct(...
@@ -72,7 +99,7 @@ bag.start_time.TimeZone = 'America/New_York';
 % from other files).
 if options.LoadAnnotations
     annotations_file = sprintf('%s_%s', TANK, options.AnnotationsExtension);
-    annotations_fullfile = fullfile(tank_folder, annotations_file);
+    annotations_fullfile = fullfile(options.RawFolderRoot, SUBJ, TANK, annotations_file);
     if exist(annotations_fullfile,'file')==0
         bag.annotations = struct.empty();
         warning('No annotations file (%s) detected in data tank <%s>\n', ...
