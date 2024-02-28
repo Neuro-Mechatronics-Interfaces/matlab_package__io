@@ -40,6 +40,8 @@ fname = fullfile(root_input, tank, T.File{iRow});
 switch type
     case {'rhd', '.rhd'}
         data = io.read_Intan_RHD2000_file(fname);
+    case {'rhs', '.rhs'}
+        data = io.read_Intan_RHS2000_file(fname);
     otherwise
         error("Not setup to handle loading .rhs (need to download reader).");
 end

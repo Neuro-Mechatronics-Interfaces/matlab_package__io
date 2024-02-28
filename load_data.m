@@ -36,7 +36,7 @@ arguments
     DD (1,1) double {mustBeNumeric, mustBeInteger}
     ARRAY {mustBeTextScalar}
     BLOCK {mustBeNumeric, mustBeInteger}
-    type {mustBeTextScalar, mustBeMember(type, {'.rhd', '.mat', '.poly5', 'rhd', 'mat', 'poly5'})} = '.mat'
+    type {mustBeTextScalar, mustBeMember(type, {'.rhd', '.rhs', '.mat', '.poly5', 'rhd', 'mat', 'poly5'})} = '.mat'
     rootdir {mustBeTextScalar, mustBeFolder} = 'R:/NMLShare/raw_data/primate'
     options.Convert2TMSi (1,1) logical = false; 
     options.Tag {mustBeTextScalar} = '';
@@ -74,7 +74,15 @@ switch lower(type)
             x = data;
         end
         x.name = sprintf('%s_%04d_%02d_%02d_%d', SUBJ, YYYY, MM, DD, BLOCK);
-
+    case ".rhs"
+        data = io.load_intan(SUBJ, YYYY, MM, DD, BLOCK, '.rhs', rootdir);
+        if options.Convert2TMSi
+            x = io.convert_intan_data_2_tmsi_format(data);
+        else
+            x = data;
+        end
+        x.name = sprintf('%s_%04d_%02d_%02d_%d', SUBJ, YYYY, MM, DD, BLOCK);
+        
     case ".mat"
         x = io.load_tmsi_mat(SUBJ, YYYY, MM, DD, ARRAY, BLOCK, rootdir, 'Tag', options.Tag);
         info = [];
