@@ -1,4 +1,4 @@
-function data = read_Intan_RHD2000_file(fname)
+function data = read_Intan_RHD2000_file(fname, options)
 %READ_INTAN_RHD2000_FILE Reads Intan RHD data format files into MATLAB.
 %
 % Version 3.0, 8 February 2021
@@ -16,11 +16,12 @@ function data = read_Intan_RHD2000_file(fname)
 % >> amplifier_channels(1)
 % >> plot(t_amplifier, amplifier_data(1,:))
 
-tic;
-p = inputParser;
-p.addOptional('fname', '');
-p.parse('fname', fname);
-if isempty(p.Results.fname)
+arguments
+    fname {mustBeTextScalar} = ""
+    options.Verbose (1,1) logical = true;
+end
+
+if strlength(fname) == 0
     [file, path] = ...
         uigetfile('*.rhd', 'Select an RHD2000 Data File', 'MultiSelect', 'off');
     if (file == 0)
@@ -29,6 +30,9 @@ if isempty(p.Results.fname)
     filename = [path,file];
 else
     filename = p.Results.fname;
+end
+if options.Verbose
+    tic;
 end
 fid = fopen(filename, 'r');
 
@@ -46,11 +50,12 @@ end
 % Read version number.
 data_file_main_version_number = fread(fid, 1, 'int16');
 data_file_secondary_version_number = fread(fid, 1, 'int16');
-
-fprintf(1, '\n');
-fprintf(1, 'Reading Intan Technologies RHD2000 Data File, Version %d.%d\n', ...
-    data_file_main_version_number, data_file_secondary_version_number);
-fprintf(1, '\n');
+if options.Verbose
+    fprintf(1, '\n');
+    fprintf(1, 'Reading Intan Technologies RHD2000 Data File, Version %d.%d\n', ...
+        data_file_main_version_number, data_file_secondary_version_number);
+    fprintf(1, '\n');
+end
 
 if (data_file_main_version_number == 1)
     num_samples_per_data_block = 60;
@@ -295,21 +300,24 @@ num_board_dig_out_samples = num_samples_per_data_block * num_data_blocks;
 
 record_time = num_amplifier_samples / sample_rate;
 
-if (data_present)
-    fprintf(1, 'File contains %0.3f seconds of data.  Amplifiers were sampled at %0.2f kS/s.\n', ...
-        record_time, sample_rate / 1000);
-    fprintf(1, '\n');
-else
-    fprintf(1, 'Header file contains no data.  Amplifiers were sampled at %0.2f kS/s.\n', ...
-        sample_rate / 1000);
-    fprintf(1, '\n');
+if options.Verbose
+    if (data_present) 
+        fprintf(1, 'File contains %0.3f seconds of data.  Amplifiers were sampled at %0.2f kS/s.\n', ...
+            record_time, sample_rate / 1000);
+        fprintf(1, '\n');
+    else
+        fprintf(1, 'Header file contains no data.  Amplifiers were sampled at %0.2f kS/s.\n', ...
+            sample_rate / 1000);
+        fprintf(1, '\n');
+    end
 end
 
 if (data_present)
-
+    
     % Pre-allocate memory for data.
-    fprintf(1, 'Allocating memory for data...\n');
-
+    if options.Verbose
+        fprintf(1, 'Allocating memory for data...\n');
+    end
     t_amplifier = zeros(1, num_amplifier_samples);
 
     amplifier_data = zeros(num_amplifier_channels, num_amplifier_samples);
@@ -323,8 +331,9 @@ if (data_present)
     board_dig_out_raw = zeros(1, num_board_dig_out_samples);
 
     % Read sampled data from file.
-    fprintf(1, 'Reading data from file...\n');
-
+    if options.Verbose
+        fprintf(1, 'Reading data from file...\n');
+    end
     amplifier_index = 1;
     aux_input_index = 1;
     supply_voltage_index = 1;
@@ -372,11 +381,12 @@ if (data_present)
         board_adc_index = board_adc_index + num_samples_per_data_block;
         board_dig_in_index = board_dig_in_index + num_samples_per_data_block;
         board_dig_out_index = board_dig_out_index + num_samples_per_data_block;
-
-        fraction_done = 100 * (i / num_data_blocks);
-        if (fraction_done >= percent_done)
-            fprintf(1, '%d%% done...\n', percent_done);
-            percent_done = percent_done + print_increment;
+        if options.Verbose
+            fraction_done = 100 * (i / num_data_blocks);
+            if (fraction_done >= percent_done)
+                fprintf(1, '%d%% done...\n', percent_done);
+                percent_done = percent_done + print_increment;
+            end
         end
     end
 
@@ -392,9 +402,9 @@ end
 fclose(fid);
 
 if (data_present)
-
-    fprintf(1, 'Parsing data...\n');
-
+    if options.Verbose
+        fprintf(1, 'Parsing data...\n');
+    end
     % Extract digital input channels to separate variables.
     for i=1:num_board_dig_in_channels
         mask = 2^(board_dig_in_channels(i).native_order) * ones(size(board_dig_in_raw));
@@ -420,11 +430,13 @@ if (data_present)
 
     % Check for gaps in timestamps.
     num_gaps = sum(diff(t_amplifier) ~= 1);
-    if (num_gaps == 0)
-        fprintf(1, 'No missing timestamps in data.\n');
-    else
-        fprintf(1, 'Warning: %d gaps in timestamp data found.  Time scale will not be uniform!\n', ...
-            num_gaps);
+    if options.Verbose
+        if (num_gaps == 0)
+            fprintf(1, 'No missing timestamps in data.\n');
+        else
+            fprintf(1, 'Warning: %d gaps in timestamp data found.  Time scale will not be uniform!\n', ...
+                num_gaps);
+        end
     end
 
     % Scale time steps (units = seconds).
@@ -439,18 +451,20 @@ if (data_present)
     % same notch filter to amplifier data here.  But don't do this for v3.0+
     % files (from Intan RHX software) because RHX saves notch-filtered data.
     if (notch_filter_frequency > 0 && data_file_main_version_number < 3)
-        fprintf(1, 'Applying notch filter...\n');
-
+        if options.Verbose
+            fprintf(1, 'Applying notch filter...\n');
+        end
         print_increment = 10;
         percent_done = print_increment;
         for i=1:num_amplifier_channels
             amplifier_data(i,:) = ...
                 notch_filter(amplifier_data(i,:), sample_rate, notch_filter_frequency, 10);
-
-            fraction_done = 100 * (i / num_amplifier_channels);
-            if (fraction_done >= percent_done)
-                fprintf(1, '%d%% done...\n', percent_done);
-                percent_done = percent_done + print_increment;
+            if options.Verbose
+                fraction_done = 100 * (i / num_amplifier_channels);
+                if (fraction_done >= percent_done)
+                    fprintf(1, '%d%% done...\n', percent_done);
+                    percent_done = percent_done + print_increment;
+                end
             end
 
         end
@@ -521,8 +535,9 @@ if (num_temp_sensor_channels > 0)
         add_to_output(t_temp_sensor);
     end
 end
-
-fprintf(1, 'Done!  Elapsed time: %0.1f seconds\n', toc);
+if options.Verbose
+    fprintf(1, 'Done!  Elapsed time: %0.1f seconds\n', toc);
+end
 % if (data_present)
 %     fprintf(1, 'Extracted data are now available in the MATLAB workspace.\n');
 % else

@@ -1,4 +1,4 @@
-function data = load_intan(SUBJ, YYYY, MM, DD, BLOCK, type, rootdir)
+function data = load_intan(SUBJ, YYYY, MM, DD, BLOCK, type, rootdir, options)
 %LOAD_INTAN  Reader entry point for INTAN data files.
 %
 % Syntax:
@@ -10,7 +10,7 @@ function data = load_intan(SUBJ, YYYY, MM, DD, BLOCK, type, rootdir)
 %   MM - month (numeric scalar)
 %   DD - day (numeric scalar)
 %   BLOCK - Recording block index (numeric scalar)
-%   type    - '.rhd' | (leaving extensible for other future filetypes)
+%   type    - '.rhd' | '.rhs' (leaving extensible for other future filetypes)
 %   rootdir - (Opt) The root folder where all the raw data stuff is kept.
 %               This should normally stay the same unless we move 
 %               our data share.
@@ -22,6 +22,17 @@ function data = load_intan(SUBJ, YYYY, MM, DD, BLOCK, type, rootdir)
 %           data struct.
 %
 % See also: Contents
+
+arguments
+    SUBJ
+    YYYY
+    MM
+    DD
+    BLOCK
+    type
+    rootdir
+    options.Verbose (1,1) logical = true;
+end
 
 tank = sprintf("%s_%04d_%02d_%02d", SUBJ, YYYY, MM, DD);
 root_input = fullfile(rootdir, SUBJ);
@@ -39,9 +50,9 @@ fname = fullfile(root_input, tank, T.File{iRow});
 
 switch type
     case {'rhd', '.rhd'}
-        data = io.read_Intan_RHD2000_file(fname);
+        data = io.read_Intan_RHD2000_file(fname, 'Verbose', options.Verbose);
     case {'rhs', '.rhs'}
-        data = io.read_Intan_RHS2000_file(fname);
+        data = io.read_Intan_RHS2000_file(fname, 'Verbose', options.Verbose);
     otherwise
         error("Not setup to handle loading .rhs (need to download reader).");
 end
