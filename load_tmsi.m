@@ -229,7 +229,11 @@ switch options.ReturnAs
             x.About.Note = "No `about.yaml` for this tank.";
             x.About.General = "No `about.yaml` for this tank.";
         end
-        i_counter = cellfun(@(C)strcmpi(C.name,options.CounterChannelName),x.channels);
+        if iscell(x.channels)
+            i_counter = cellfun(@(C)strcmpi(C.name,options.CounterChannelName),x.channels);
+        else
+            i_counter = arrayfun(@(c)strcmpi(c.AltChanName,options.CounterChannelName),x.channels);
+        end
         if sum(i_counter)~=1
             warning('No counter channel found: using sample rate only to generate assumed time vector.');
             x.t = 0:(1/x.sample_rate):((size(x.samples,2)-1)/x.sample_rate);
