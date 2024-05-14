@@ -1,23 +1,23 @@
-function [data, metadata, n] = load_cleaned_decomposition(k,options)
+function [data, metadata, n] = load_cleaned_decomposition(inputFolder, k,options)
 %LOAD_CLEANED_DECOMPOSITION Loads the cleaned decomposition results from DEMUSE tool.
 %
 % Syntax:
-%   [data, metadata, n] = io.load_cleaned_decomposition(k,'Name',value,...);
+%   [data, metadata, n] = io.load_cleaned_decomposition(inputFolder, k,'Name',value,...);
 %
 % Inputs:
 %   k - Trial index
 
 arguments
+    inputFolder {mustBeTextScalar}
     k (1,1) {mustBeInteger}
     options.FileNameMatchExpression = 'Trl%d*.mat';
-    options.InputFolder = 'C:/Data/Shared/MCP01_2024_02_20/MotorUnits Decomposition/Decomposition Output Cleaned';
     options.Pattern = 'Trl(\d+)_([A-Za-z]{3})([A-Za-z]+)_offset([\d.]+)_length([\d.]+)_runs(\d+)'; % Regular expression pattern for parsing
     options.Tokens = {'Trial','Group','Location','Offset','Length','NumRuns'};
 end
 
 
 expr = sprintf(options.FileNameMatchExpression,k);
-F = dir(fullfile(options.InputFolder, expr));
+F = dir(fullfile(inputFolder, expr));
 
 filenames = {F.name};
 
