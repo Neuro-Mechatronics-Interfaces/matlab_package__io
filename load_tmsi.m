@@ -102,16 +102,24 @@ switch lower(string(type))
     case ".lsl"
         tank = sprintf('%s_%04d_%02d_%02d', SUBJ, YYYY, MM, DD);
         name = sprintf('%s_%s_%03d', tank, ARRAY, BLOCK);
-        [streams, fileheader] = io.load_xdf(fullfile(rootdir, SUBJ, tank, sprintf('%s_AB_LSL_%03d.xdf', tank, BLOCK)));
+        if strlength(options.Tag) > 0
+            in_file = dir(fullfile(rootdir, SUBJ, tank, options.Tag, sprintf('%s_%s_%s_%03d.*df', tank, ARRAY, BLOCK)));
+        else
+            in_file = dir(fullfile(rootdir, SUBJ, tank, sprintf('%s_%s_%03d.*df', tank, ARRAY, BLOCK)));
+        end
+        if isempty(in_file)
+            error("No files matched expression <%s>", fullfile(rootdir, SUBJ, tank, sprintf('%s_%s_LSL_%03d.*df', tank, ARRAY, BLOCK)));
+        end
+        [streams, fileheader] = io.load_xdf(fullfile(in_file(1).folder,in_file(1).name));
         info = fileheader.info;
         dt = datetime(info.datetime(1:(end-5)), 'Format', 'uuuu-MM-dd HH:mm:ss.SSS');
         n = inf;
         k = struct;
         for ii = 1:numel(streams)
-            if startsWith(streams{ii}.info.name, 'SAGA')
+            tmp_name = char(streams{ii}.info.name);
+            if startsWith(tmp_name, 'SAGA')
                 n = min(n,streams{ii}.segments.num_samples);
-                tag_info = strsplit(streams{ii}.info.name, '-');
-                k.(tag_info{2}) = ii;
+                k.(tmp_name) = ii;
             end
         end
         x = struct('channels', [], 'sample_rate', streams{1}.info.nominal_srate, 'samples', [], 'time', dt, ...
@@ -130,12 +138,17 @@ switch lower(string(type))
                 x.samples = streams{k.B}.time_series;
                 x.samples = size(x.samples, 2);
             otherwise % e.g. "AB" or "*"
-                x.channels = [streams{k.A}.info.desc.channels.channel, streams{k.B}.info.desc.channels.channel];
-                info.layout.A = streams{k.A}.info.desc.layout;
-                info.layout.B = streams{k.B}.info.desc.layout;
-                info.t_begin.A = streams{k.B}.segments.t_begin;
-                info.t_begin.B = streams{k.B}.segments.t_begin;
-                x.samples = [streams{k.A}.time_series(:,1:n); streams{k.B}.time_series(:,1:n)];
+                all_tags = fieldnames(k);
+                x.channels = [];
+                x.samples = [];
+                info.saga = [];
+                for ii = 1:numel(all_tags)
+                    x.channels = [x.channels, streams{k.(all_tags{ii})}.info.desc.channels.channel];
+                    info.layout.(all_tags{ii}) = streams{k.(all_tags{ii})}.info.desc.layout;
+                    info.t_begin.(all_tags{ii}) = streams{k.(all_tags{ii})}.segments.t_begin;
+                    info.saga = [info.saga; repmat(string(all_tags{ii}), numel(streams{k.(all_tags{ii})}.info.desc.channels.channel), 1)]; 
+                    x.samples = [x.samples; streams{k.(all_tags{ii})}.time_series(:,1:n)];
+                end
                 x.num_samples = n;
         end
         for iCh = 1:numel(x.channels)
@@ -231,13 +244,27 @@ switch options.ReturnAs
         end
         if iscell(x.channels)
             i_counter = cellfun(@(C)strcmpi(C.name,options.CounterChannelName),x.channels);
+        elseif isstruct(x)
+            if isfield(x,'name')
+                i_counter = arrayfun(@(c)strcmpi(c.name,options.CounterChannelName),x.channels);
+            else
+                i_counter = arrayfun(@(c)strcmpi(c.AltChanName,options.CounterChannelName),x.channels);
+            end
         else
             i_counter = arrayfun(@(c)strcmpi(c.AltChanName,options.CounterChannelName),x.channels);
         end
-        if sum(i_counter)~=1
+        if ischar(x.sample_rate) || isstring(x.sample_rate)
+            x.sample_rate = str2double(x.sample_rate);
+        end
+        if sum(i_counter)==0
             warning('No counter channel found: using sample rate only to generate assumed time vector.');
             x.t = 0:(1/x.sample_rate):((size(x.samples,2)-1)/x.sample_rate);
-        else
+            needs_time = false;
+        elseif sum(i_counter) > 1
+            i_counter = find(i_counter);
+            needs_time = true;
+        end
+        if needs_time
             if options.KeepCounterStartOffset
                 x.t = x.samples(i_counter,:)./x.sample_rate;
             else

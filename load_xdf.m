@@ -211,7 +211,8 @@ if ~isfield(opts,'CorrectStreamLags')
 if ~isfield(opts,'FrameRateAccuracy')
     opts.FrameRateAccuracy = .05; end
 if ~exist(filename,'file')
-    error(['The file "' filename '" does not exist.']); end
+    error('The file "%s" does not exist.', filename); 
+end
 
 
 % uncompress if necessary (note: "bonus" feature, not part of the XDF 1.0 spec)
