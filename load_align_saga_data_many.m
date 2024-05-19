@@ -54,6 +54,7 @@ arguments
     options.TriggerChannelIndicator {mustBeTextScalar} = 'TRIG';
     options.TriggerBitMask = [];
     options.ExcludedPulseIndices (1,:) {mustBeInteger,mustBePositive} = [];
+    options.IsTextile64 (1,1) logical = true;
     options.ManualSyncIndex = [];
 end
 data = struct('samples',[],'channels',[],'sample_rate',options.SampleRate);
@@ -109,7 +110,11 @@ for ik = 1:m
         end
         
         % Apply grid-specific sampling, if specified:
-        uni = samples(iUni,:);
+        iUniIndex = find(iUni);
+        if options.IsTextile64
+            iUniIndex = iUniIndex([17	16	15	14	13	9	5	1	22	21	20	19	18	10	6	2	27	26	25	24	23	11	7	3	32	31	30	29	28	12	8	4	33	34	35	36	37	53	57	61	38	39	40	41	42	54	58	61	43	44	45	46	47	55	59	63	48	49	50	51	52	56	60	64]);
+        end
+        uni = samples(iUniIndex,:);
         
         r = rms(uni,2);
         rms_bad = (r < options.RMSCutoff(1)) | (r >= options.RMSCutoff(2));
@@ -145,7 +150,7 @@ for ik = 1:m
                 trigMin = min(trigdata);
                 trigBitMask = trigMax - trigMin;
             else
-                if numel(options.TriggerBitMask) == 1
+                if isscalar(options.TriggerBitMask)
                     trigBitMask = options.TriggerBitMask;
                 else
                     trigBitMask = options.TriggerBitMask(ii);
