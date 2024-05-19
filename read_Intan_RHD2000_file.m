@@ -29,7 +29,7 @@ if strlength(fname) == 0
     end
     filename = [path,file];
 else
-    filename = p.Results.fname;
+    filename = fname;
 end
 if options.Verbose
     tic;
