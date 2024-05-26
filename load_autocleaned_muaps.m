@@ -43,7 +43,7 @@ for ik = 1:numel(data.MUPulses)
     metadata.ID_NonTracked(ik) = sprintf("MUAP-%02d-%02d",trialIndex,ik);
 end
 
-[metadata.PNR,metadata.MUID_Label] = batch_compute_PNR_and_Label(data);
+[metadata.PNR,metadata.MUID_Label] = ckc.batch_compute_PNR_and_Label(data);
 metadata.Color=options.BaseColormap(end : -floor(size(options.BaseColormap,1)/max([length(data.MUPulses),1])) :1,:);
 
 end
