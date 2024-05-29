@@ -103,12 +103,12 @@ switch lower(string(type))
         tank = sprintf('%s_%04d_%02d_%02d', SUBJ, YYYY, MM, DD);
         name = sprintf('%s_%s_%03d', tank, ARRAY, BLOCK);
         if strlength(options.Tag) > 0
-            in_file = dir(fullfile(rootdir, SUBJ, tank, options.Tag, sprintf('%s_%s_%s_%03d.*df', tank, ARRAY, BLOCK)));
+            in_file = dir(fullfile(rootdir, SUBJ, tank, options.Tag, sprintf('%s_%s_%s%03d.*df', tank, ARRAY, BLOCK)));
         else
-            in_file = dir(fullfile(rootdir, SUBJ, tank, sprintf('%s_%s_%03d.*df', tank, ARRAY, BLOCK)));
+            in_file = dir(fullfile(rootdir, SUBJ, tank, sprintf('%s_%s%03d.*df', tank, ARRAY, BLOCK)));
         end
         if isempty(in_file)
-            error("No files matched expression <%s>", fullfile(rootdir, SUBJ, tank, sprintf('%s_%s_LSL_%03d.*df', tank, ARRAY, BLOCK)));
+            error("No files matched expression <%s>", fullfile(rootdir, SUBJ, tank, sprintf('%s_%s%03d.*df', tank, ARRAY, BLOCK)));
         end
         [streams, fileheader] = io.load_xdf(fullfile(in_file(1).folder,in_file(1).name));
         info = fileheader.info;
