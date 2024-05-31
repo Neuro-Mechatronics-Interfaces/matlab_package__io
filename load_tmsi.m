@@ -115,15 +115,20 @@ switch lower(string(type))
         dt = datetime(info.datetime(1:(end-5)), 'Format', 'uuuu-MM-dd HH:mm:ss.SSS');
         n = inf;
         k = struct;
+        gesture_sync = [];
         for ii = 1:numel(streams)
             tmp_name = char(streams{ii}.info.name);
             if startsWith(tmp_name, 'SAGA')
                 n = min(n,streams{ii}.segments.num_samples);
                 k.(tmp_name) = ii;
+            elseif startsWith(tmp_name,'Gesture')
+                Gesture = reshape(streams{ii}.time_series,[],1);
+                Time = reshape(streams{ii}.time_stamps,[],1);
+                gesture_sync = table(Time,Gesture);
             end
         end
-        x = struct('channels', [], 'sample_rate', streams{1}.info.nominal_srate, 'samples', [], 'time', dt, ...
-                   'name', name, 'num_samples', []);
+        x = struct('t',[],'channels', [], 'sample_rate', streams{1}.info.nominal_srate, 'samples', [], 'time', dt, ...
+                   'name', name, 'num_samples', [], 'markers', struct('gesture', gesture_sync));
         switch string(ARRAY)
             case "A"
                 x.channels = streams{k.A}.info.desc.channels.channel;
@@ -131,12 +136,14 @@ switch lower(string(type))
                 info.t_begin.A = streams{k.B}.segments.t_begin;
                 x.samples = streams{k.A}.time_series;
                 x.num_samples = size(x.samples,2);
+                x.t = streams{k.A}.time_stamps;
             case "B"
                 x.channels = streams{k.B}.info.desc.channels.channel;
                 info.layout.B = streams{k.B}.info.desc.layout;
                 info.t_begin.B = streams{k.B}.segments.t_begin;
                 x.samples = streams{k.B}.time_series;
                 x.samples = size(x.samples, 2);
+                x.t = streams{k.B}.time_stamps;
             otherwise % e.g. "AB" or "*"
                 all_tags = fieldnames(k);
                 x.channels = [];
@@ -148,8 +155,15 @@ switch lower(string(type))
                     info.t_begin.(all_tags{ii}) = streams{k.(all_tags{ii})}.segments.t_begin;
                     info.saga = [info.saga; repmat(string(all_tags{ii}), numel(streams{k.(all_tags{ii})}.info.desc.channels.channel), 1)]; 
                     x.samples = [x.samples; streams{k.(all_tags{ii})}.time_series(:,1:n)];
+                    x.t = [x.t; streams{k.(all_tags{ii})}.time_stamps(1:n)];
                 end
                 x.num_samples = n;
+        end
+        if ~options.KeepCounterStartOffset
+            if ~isempty(x.markers.gesture)
+                x.markers.gesture.Time = x.markers.gesture.Time - x.t(1,1);
+            end
+            x.t = x.t - x.t(1,1);
         end
         for iCh = 1:numel(x.channels)
             x.channels{iCh}.alternative_name = x.channels{iCh}.label; % For compatibility
@@ -171,6 +185,7 @@ switch lower(string(type))
             tag_info = strsplit(streams{ii}.info.name, '-');
             k.(tag_info{2}) = ii;
         end
+        
         name = sprintf('%s_%s_%03d', tank, ARRAY, BLOCK);
         x = struct('channels', [], 'sample_rate', streams{1}.info.nominal_srate, 'samples', [], 'time', dt, ...
                    'name', name, 'num_samples', []);
@@ -256,19 +271,25 @@ switch options.ReturnAs
         if ischar(x.sample_rate) || isstring(x.sample_rate)
             x.sample_rate = str2double(x.sample_rate);
         end
-        if sum(i_counter)==0
-            warning('No counter channel found: using sample rate only to generate assumed time vector.');
-            x.t = 0:(1/x.sample_rate):((size(x.samples,2)-1)/x.sample_rate);
+        if x.sample_rate > 0
+            if sum(i_counter)==0
+                warning('No counter channel found: using sample rate only to generate assumed time vector.');
+                x.t = 0:(1/x.sample_rate):((size(x.samples,2)-1)/x.sample_rate);
+                needs_time = false;
+            elseif sum(i_counter) > 1
+                i_counter = find(i_counter);
+                needs_time = true;
+            end
+        else
             needs_time = false;
-        elseif sum(i_counter) > 1
-            i_counter = find(i_counter);
-            needs_time = true;
         end
         if needs_time
-            if options.KeepCounterStartOffset
-                x.t = x.samples(i_counter,:)./x.sample_rate;
-            else
-                x.t = (x.samples(i_counter,:)-x.samples(i_counter,1))./x.sample_rate;
+            if x.sample_rate > 0
+                if options.KeepCounterStartOffset
+                    x.t = x.samples(i_counter,:)./x.sample_rate;
+                else
+                    x.t = (x.samples(i_counter,:)-x.samples(i_counter,1))./x.sample_rate;
+                end
             end
             if options.InterpolateMissingSamples
                 tq = 0:(1/x.sample_rate):x.t(end);
