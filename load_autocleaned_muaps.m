@@ -17,7 +17,8 @@ function [data,metadata] = load_autocleaned_muaps(trialIndex, options)
 arguments
     trialIndex (1,1) {mustBeInteger}
     options.File {mustBeTextScalar} = "";
-    options.InputRoot = "C:/Data/Temp/Auto";
+    options.InputRoot = "C:/Data/MetaWB";
+    options.InputSubfolder = "MotorUnits Decomposition/Decomposition Output/Auto";
     options.Subject = "MCP04";
     options.Year = 2024;
     options.Month = 5;
@@ -27,7 +28,7 @@ arguments
 end
 if strlength(options.File) < 1
     TANK = sprintf('%s_%04d_%02d_%02d', options.Subject, options.Year, options.Month, options.Day);
-    fname = fullfile(options.InputRoot, sprintf('%s_%d_%s.mat', TANK, trialIndex, options.FileTag));
+    fname = fullfile(options.InputRoot, TANK, options.InputSubfolder, sprintf('%s_%d_%s.mat', TANK, trialIndex, options.FileTag));
 else
     fname = options.File;
 end
