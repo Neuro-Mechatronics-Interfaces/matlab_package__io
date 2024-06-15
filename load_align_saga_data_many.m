@@ -86,7 +86,12 @@ for ik = 1:m
             samples = raw{ii,ik}.samples;
             n_samp = raw{ii,ik}.num_samples;
         end
-        ch_name{ii} = {raw{ii,ik}.channels.name};
+        if iscell(raw{ii,ik}.channels)
+            ch_tmp = vertcat(raw{ii,ik}.channels{:});
+            ch_name{ii} = {ch_tmp.name};
+        else
+            ch_name{ii} = {raw{ii,ik}.channels.name};
+        end
         iUni = (contains(ch_name{ii},'R') & contains(ch_name{ii},'C') & ~contains(ch_name{ii},'E')) | (contains(ch_name{ii},'UNI'));
         iBip = contains(ch_name{ii},'BIP');
         if sum(iUni) < 64
@@ -159,7 +164,7 @@ for ik = 1:m
             if isempty(options.InvertLogic)
                 trigmasked = bitand(trigdata,trigBitMask)==trigBitMask;
             else
-                if numel(options.InvertLogic)==1
+                if isscalar(options.InvertLogic)
                     if options.InvertLogic
                         trigmasked = bitand(trigdata,trigBitMask)~=trigBitMask;
                     else
