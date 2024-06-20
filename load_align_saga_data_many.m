@@ -40,20 +40,20 @@ function [data,sync,ch_name] = load_align_saga_data_many(poly5_files, options)
 
 arguments
     poly5_files (:,:) string
+    options.ApplyCAR (1,1) logical = true;
     options.ApplyFilter (1,1) logical = true;
-    options.HighpassFilterCutoff (1,1) double = 100;
-    options.ApplyRMSCutoff (1,1) logical = false;
-    options.RMSCutoff (1,2) double = [1, 100];
     options.ApplyGridInterpolation (1,1) logical = true;
     options.ApplySpatialLaplacian (1,1) logical = true;
-    options.ApplyCAR (1,1) logical = true;
+    options.ApplyRMSCutoff (1,1) logical = false;
+    options.ExcludedPulseIndices (1,:) {mustBeInteger,mustBePositive} = [];
+    options.HighpassFilterCutoff (1,1) double = 100;
+    options.RMSCutoff (1,2) double = [1, 100];
     options.ZeroMissing (1,1) logical = false;
     options.InitialPulseOffset (1,1) {mustBeInteger} = 0; % Samples prior to first rising pulse, to include.
     options.InvertLogic logical = [];
     options.SampleRate (1,1) double {mustBeMember(options.SampleRate, [2000, 4000])} = 4000;
     options.TriggerChannelIndicator {mustBeTextScalar} = 'TRIG';
     options.TriggerBitMask = [];
-    options.ExcludedPulseIndices (1,:) {mustBeInteger,mustBePositive} = [];
     options.IsTextile64 (1,1) logical = true;
     options.ManualSyncIndex = [];
 end
@@ -117,7 +117,7 @@ for ik = 1:m
         % Apply grid-specific sampling, if specified:
         iUniIndex = find(iUni);
         if options.IsTextile64
-            iUniIndex = iUniIndex([17	16	15	14	13	9	5	1	22	21	20	19	18	10	6	2	27	26	25	24	23	11	7	3	32	31	30	29	28	12	8	4	33	34	35	36	37	53	57	61	38	39	40	41	42	54	58	61	43	44	45	46	47	55	59	63	48	49	50	51	52	56	60	64]);
+            iUniIndex = iUniIndex([17	16	15	14	13	9	5	1	22	21	20	19	18	10	6	2	27	26	25	24	23	11	7	3	32	31	30	29	28	12	8	4	33	34	35	36	37	53	57	61	38	39	40	41	42	54	58	62	43	44	45	46	47	55	59	63	48	49	50	51	52	56	60	64]);
         end
         uni = samples(iUniIndex,:);
         
