@@ -55,6 +55,8 @@ arguments
     options.TriggerChannelIndicator {mustBeTextScalar} = 'TRIG';
     options.TriggerBitMask = [];
     options.IsTextile64 (1,1) logical = true;
+    options.TabletFile {mustBeTextScalar} = "SUBJ_YYYY_MM_DD_TABLET_BLOCK.bin";
+    options.InputRoot = "";
     options.ManualSyncIndex = [];
 end
 data = struct('samples',[],'channels',[],'sample_rate',options.SampleRate);
@@ -63,7 +65,7 @@ m = size(poly5_files,2);
 raw = cell(n,m);
 for ik = 1:m
     for ii = 1:n % Loads all files
-        raw{ii,ik} = TMSiSAGA.Poly5.read(poly5_files(ii,ik));
+        raw{ii,ik} = TMSiSAGA.Poly5.read(fullfile(options.InputRoot,poly5_files(ii,ik)));
     end
 end
 
@@ -226,4 +228,35 @@ for ik = 1:m
     data.samples = [data.samples, cat_samples];
 end
 ch_name = horzcat(ch_name{:});
+if strlength(options.InputRoot)>0
+    [p,~,~] = fileparts(options.TabletFile);
+    if strlength(p) < 1
+        tablet_file = fullfile(options.InputRoot,options.TabletFile);
+    else
+        tablet_file = options.TabletFile;
+    end
+end
+if exist(tablet_file,'file')~=0
+    
+    data.tablet = io.load_tablet_data(tablet_file);
+    i_sync_device = find(contains(poly5_files,data.tablet.Properties.UserData.SyncDeviceTag),1,'first');
+    if ~isempty(i_sync_device)
+        i_counter = find(contains(ch_name,'COUNTER'),1,'first');
+        if ~isempty(i_counter)
+            Index = data.samples(i_counter,:)';
+            X = interp1(data.tablet.Index,data.tablet.X,Index,'linear');
+            Y = interp1(data.tablet.Index,data.tablet.Y,Index,'linear');
+            Pressure = interp1(data.tablet.Index,data.tablet.Pressure,Index,'linear');
+            X(ismissing(X)) = 0;
+            Y(ismissing(Y)) = 0;
+            Pressure(ismissing(Pressure)) = 0;
+            u = data.tablet.Properties.UserData;
+            data.tablet = table(Index, X, Y, Pressure);
+            data.tablet.Properties.UserData = u;
+        end
+    end
+
+else
+    data.tablet = missing;
+end
 end
