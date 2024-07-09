@@ -235,6 +235,8 @@ if strlength(options.InputRoot)>0
     else
         tablet_file = options.TabletFile;
     end
+else
+    tablet_file = options.TabletFile;
 end
 if exist(tablet_file,'file')~=0
     
