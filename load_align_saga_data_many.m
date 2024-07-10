@@ -1,42 +1,58 @@
-function [data,sync,ch_name] = load_align_saga_data_many(poly5_files, options)
-%LOAD_ALIGN_SAGA_DATA_MANY Loads synchronized data from multiple SAGAs (for the same session). Since filenames are typically adhoc/differ by acquisition pipeline, supply poly5_files as an array of strings with the full filename in each element.
+function [data, sync, ch_name] = load_align_saga_data_many(poly5_files, options)
+%LOAD_ALIGN_SAGA_DATA_MANY Loads and aligns data from multiple SAGA devices, typically for the same session.
+%
+% This function processes data from multiple Poly5 files representing recordings from different
+% SAGA devices. It handles file loading, synchronization, optional filtering, and alignment of data
+% across sessions or devices. The function aims to concatenate these multi-device recordings along
+% specified dimensions and apply various preprocessing steps based on provided options.
 %
 % Syntax:
-%   [data,sync,ch_name] = io.load_align_saga_data_many(poly5_files,'Name',value,...);
+%   [data, sync, ch_name] = io.load_align_saga_data_many(poly5_files, 'Name', value, ...)
 %
 % Inputs:
-%   poly5_files - N x M array of strings which are the full file path for
-%                   individual poly5 recordings to load. N indicates the
-%                   number of Poly5 files used in each recording, while M
-%                   indicates the number of recordings to "concatenate."
-%                   The resultant `samples` field of `data` output will
-%                   contain the individual file samples concatenated
-%                   vertically (for N, along columns/time-samples) and 
-%                   horizontally (for M, along rows/channels).
-% 
-% Options:
-%   ApplyFilter (1,1) logical = true;
-%   HighpassFilterCutoff (1,1) double = 100;
-%   ApplyRMSCutoff (1,1) logical = false;
-%   RMSCutoff (1,2) double = [1, 100];
-%   ApplyGridInterpolation (1,1) logical = true;
-%   ApplySpatialLaplacian (1,1) logical = true;
-%   InitialPulseOffset (1,1) {mustBeInteger} = 0; % Samples prior to first rising pulse, to include.
-%   SampleRate (1,1) double {mustBeMember(options.SampleRate, [2000, 4000])} = 4000;
-%   TriggerChannelIndicator {mustBeTextScalar} = 'TRIG';
-%   TriggerBitMask = [];
-%   ExcludedPulseIndices (1,:) {mustBeInteger,mustBePositive} = [];
-% 
-% Output:
-%   data - struct with fields: 
-%               + `samples` (the [filtered] data array)
-%               + `channels` (the channel information struct array)
-%               + `sample_rate` (the shared sample rate from all files)
-%   sync - N x M array of struct with fields `rising` and `falling` which
-%           are the relative sample instants parsed from the TRIGGERS sync
-%           bit of each recording/SAGA combination. 
+%   poly5_files - A string array with the full file paths for each Poly5 file. The dimensions of the
+%                 array determine the organization of the files, where N rows indicate the number of
+%                 files per session and M columns represent the number of sessions or concatenation
+%                 groups.
 %
-% See also: Contents, io.load_align_saga_data, ckc.template__pre_process
+% Options:
+%       'ApplyCAR' - Logical indicating whether to apply Common Average Referencing.
+%       'ApplyFilter' - Logical indicating whether to apply high-pass filtering.
+%       'HighpassFilterCutoff' - High-pass filter cutoff frequency.
+%       'ApplyGridInterpolation' - Logical indicating whether to interpolate data on a grid.
+%       'ApplySpatialLaplacian' - Logical indicating whether to apply spatial Laplacian filtering.
+%       'ApplyRMSCutoff' - Logical indicating whether to apply RMS cutoff thresholding.
+%       'RMSCutoff' - Two-element vector specifying the lower and upper RMS thresholds.
+%       'ZeroMissing' - Logical indicating whether to zero out missing data points.
+%       'InitialPulseOffset' - Integer specifying initial pulse offset in samples.
+%       'SampleRate' - Desired sample rate; must be one of the specified options.
+%       'TriggerChannelIndicator' - Name indicator for the trigger channel.
+%       'TriggerBitMask' - Bitmask to apply to trigger channel data for pulse detection.
+%       'IsTextile64' - Logical indicating if data arrangement follows a 64-electrode textile configuration.
+%       'TextileTo8x8GridMapping' - Mapping of electrodes from a textile configuration to a standard 8x8 grid.
+%       'TabletFile' - Optional path to a tablet data file for synchronization.
+%       'InputRoot' - Root directory for input files if not included in poly5_files paths.
+%       'ManualSyncIndex' - Optional manual synchronization indices.
+%
+% Outputs:
+%   data - Struct containing:
+%       samples - Concatenated and possibly filtered sample data.
+%       channels - Information about data channels.
+%       sample_rate - Sample rate used across all files.
+%       tablet - If available, tablet interaction data synchronized with neural recordings.
+%
+%   sync - Cell array of synchronization data structures, each containing 'rising' and 'falling'
+%          fields with relative sample instants for synchronization pulses.
+%
+%   ch_name - Cell array of channel names.
+%
+% Examples:
+%   files = ["path/to/session1/poly5file1.poly5", "path/to/session1/poly5file2.poly5"];
+%   [data, sync, ch_name] = io.load_align_saga_data_many(files, ...
+%       'ApplyFilter', true, 'HighpassFilterCutoff', 100, 'SampleRate', 4000);
+%
+% See also: Contents, poly5.read
+
 
 arguments
     poly5_files (:,:) string
@@ -55,6 +71,7 @@ arguments
     options.TriggerChannelIndicator {mustBeTextScalar} = 'TRIG';
     options.TriggerBitMask = [];
     options.IsTextile64 (1,1) logical = true;
+    options.TextileTo8x8GridMapping (1,64) {mustBeInteger, mustBeInRange(options.TextileTo8x8GridMapping,1,64)} = [17 16 15	14 13 9	5 1	22 21 20 19	18 10 6	2 27 26	25 24 23 11	7 3	32 31 30 29	28 12 8	4 33 34 35 36 37 53 57 61 38 39 40 41 42 54 58 62 43 44 45 46 47 55 59 63 48 49 50 51 52 56 60 64];
     options.TabletFile {mustBeTextScalar} = "SUBJ_YYYY_MM_DD_TABLET_BLOCK.bin";
     options.InputRoot = "";
     options.ManualSyncIndex = [];
@@ -119,7 +136,11 @@ for ik = 1:m
         % Apply grid-specific sampling, if specified:
         iUniIndex = find(iUni);
         if options.IsTextile64
-            iUniIndex = iUniIndex([17	16	15	14	13	9	5	1	22	21	20	19	18	10	6	2	27	26	25	24	23	11	7	3	32	31	30	29	28	12	8	4	33	34	35	36	37	53	57	61	38	39	40	41	42	54	58	62	43	44	45	46	47	55	59	63	48	49	50	51	52	56	60	64]);
+            iCheck = unique(options.TextileTo8x8GridMapping);
+            if numel(iCheck)~=64
+                error("Must have exactly 64 unique elements in 8x8 Grid mapping, but only detected %d unique elements.", numel(iCheck));
+            end
+            iUniIndex = iUniIndex(options.TextileTo8x8GridMapping);
         end
         uni = samples(iUniIndex,:);
         
@@ -128,17 +149,43 @@ for ik = 1:m
         if options.ApplyRMSCutoff
             uni(rms_bad,:) = missing;
             if options.ApplyGridInterpolation
-                uni = reshape(uni,8,8,[]);
-                for ij = 1:size(uni,3)
-                    uni(:,:,ij) = fillmissing2(uni(:,:,ij),'linear');
+                if options.IsTextile64
+                    for iGrid = 1:2
+                        tmp_index = (1:32) + (iGrid-1)*32;
+                        tmp = reshape(uni(tmp_index,:),8,4,[]);
+                        for ij = 1:size(tmp,3)
+                            tmp(:,:,ij) = fillmissing2(tmp(:,:,ij),'linear');
+                        end
+                        uni(tmp_index,:) = reshape(tmp,32,[]);
+                    end
+                else
+                    uni = reshape(uni,8,8,[]);
+                    for ij = 1:size(uni,3)
+                        uni(:,:,ij) = fillmissing2(uni(:,:,ij),'linear');
+                    end
+                    uni = reshape(uni,64,[]);
                 end
-                uni = reshape(uni,64,[]);
             end
         end
         if options.ApplySpatialLaplacian
-            uni = reshape(del2(reshape(uni,8,8,[])),64,[]);
+            if options.IsTextile64
+                for iGrid = 1:2
+                    tmp_index = (1:32) + (iGrid-1)*32;
+                    uni(tmp_index,:) = reshape(del2(reshape(uni(tmp_index,:),8,4,[])),32,[]);
+                end
+            else
+                uni = reshape(del2(reshape(uni,8,8,[])),64,[]);
+            end
         elseif options.ApplyCAR
-            uni(~rms_bad,:) = uni(~rms_bad,:) - median(uni(~rms_bad,:),1);
+            if options.IsTextile64
+                for iGrid = 1:2
+                    tmp_index = (1:32) + (iGrid-1)*32;
+                    tmp_mask = tmp_index(~rms_bad(tmp_index));
+                    uni(tmp_mask,:) = uni(tmp_mask,:) - median(uni(tmp_mask,:),1);
+                end
+            else
+                uni(~rms_bad,:) = uni(~rms_bad,:) - median(uni(~rms_bad,:),1);
+            end
         end
         if options.ZeroMissing
             uni(any(ismissing(uni),2),:) = 0;
