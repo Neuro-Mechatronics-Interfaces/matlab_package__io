@@ -279,6 +279,8 @@ switch options.ReturnAs
             elseif sum(i_counter) > 1
                 i_counter = find(i_counter);
                 needs_time = true;
+            else
+                needs_time = true;
             end
         else
             needs_time = false;
