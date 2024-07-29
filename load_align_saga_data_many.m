@@ -59,7 +59,7 @@ arguments
     options.ApplyCAR (1,1) logical = true;
     options.ApplyFilter (1,1) logical = true;
     options.ApplyGridInterpolation (1,1) logical = true;
-    options.ApplySpatialLaplacian (1,1) logical = true;
+    options.ApplySpatialFilter (1,1) logical = true;
     options.ApplyRMSCutoff (1,1) logical = false;
     options.ExcludedPulseIndices (1,:) {mustBeInteger,mustBePositive} = [];
     options.HighpassFilterCutoff (1,1) double = 100;
@@ -167,14 +167,15 @@ for ik = 1:m
                 end
             end
         end
-        if options.ApplySpatialLaplacian
+        if options.ApplySpatialFilter
             if options.IsTextile64
                 for iGrid = 1:2
                     tmp_index = (1:32) + (iGrid-1)*32;
-                    uni(tmp_index,:) = reshape(del2(reshape(uni(tmp_index,:),8,4,[])),32,[]);
+                    tmp_grid = gradient(reshape(uni(tmp_index,:),8,4,[]));
+                    uni(tmp_index,:) = reshape(tmp_grid,32,[]);
                 end
             else
-                uni = reshape(del2(reshape(uni,8,8,[])),64,[]);
+                uni = reshape(gradient(reshape(uni,8,8,[])),64,[]);
             end
         elseif options.ApplyCAR
             if options.IsTextile64
