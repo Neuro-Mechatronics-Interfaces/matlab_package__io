@@ -17,10 +17,13 @@ nRest = numel(vec_rest);
 data = load(fname);
 rising = struct;
 rising.all = utils.parse_sync(data.sync, 0, 'InvertLogic', false);
+if isempty(rising.all)
+    rising.all = 1;
+end
 data.t = (0:(size(data.uni,2)-1))./data.sample_rate;
 all_gesture = bitand(data.sync,1)==1;
 all_rest = bitand(data.sync,1)==0;
-if options.RemoveFirstPulse
+if options.RemoveFirstPulse && (numel(rising.all) > 1)
     rising.all(1) = []; % Remove sync blip from Prakarsh Gesture GUI
 end
 rising.rest = rising.all;

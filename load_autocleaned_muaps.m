@@ -18,7 +18,8 @@ arguments
     trialIndex (1,1) {mustBeInteger}
     options.File {mustBeTextScalar} = "";
     options.InputRoot = "C:/Data/MetaWB";
-    options.InputSubfolder = "MotorUnits Decomposition/Decomposition Output/Auto";
+    %options.InputSubfolder = "MotorUnits Decomposition/Decomposition Output/Auto";
+    options.InputSubfolder = "Decomposition/CKC/Auto";
     options.Subject = "MCP04";
     options.Year = 2024;
     options.Month = 5;
