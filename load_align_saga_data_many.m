@@ -59,7 +59,7 @@ arguments
     options.ApplyCAR (1,1) logical = true;
     options.ApplyFilter (1,1) logical = true;
     options.ApplyGridInterpolation (1,1) logical = true;
-    options.ApplySpatialFilter (1,1) logical = true;
+    options.ApplySpatialFilter (1,1) logical = false;
     options.ApplyRMSCutoff (1,1) logical = false;
     options.ExcludedPulseIndices (1,:) {mustBeInteger,mustBePositive} = [];
     options.HighpassFilterCutoff (1,1) double = 100;
@@ -168,8 +168,9 @@ for ik = 1:m
         uni = samples(iUniIndex,:);
         
         r = rms(uni,2);
-        rms_bad = (r < options.RMSCutoff(1)) | (r >= options.RMSCutoff(2));
+        
         if options.ApplyRMSCutoff
+            rms_bad = (r < options.RMSCutoff(1)) | (r >= options.RMSCutoff(2));
             uni(rms_bad,:) = missing;
             if options.ApplyGridInterpolation
                 if options.IsTextile64
@@ -189,6 +190,8 @@ for ik = 1:m
                     uni = reshape(uni,64,[]);
                 end
             end
+        else
+            rms_bad = false(size(r));
         end
         if options.ApplySpatialFilter
             if options.IsTextile64

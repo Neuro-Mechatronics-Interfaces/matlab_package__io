@@ -8,6 +8,7 @@ arguments
     options.NumChannels (1,1) {mustBePositive, mustBeInteger} = 256;
     options.GestureIndex (1,:) {mustBeInteger} = 501:6500;
     options.RestIndex (1,:) {mustBeInteger} = -6500:-501;
+    options.SyncMask (1,1) double = 0;
     options.RemoveFirstPulse (1,1) logical = true;
 end
 vec_gesture = options.GestureIndex';
@@ -16,13 +17,17 @@ nGesture = numel(vec_gesture);
 nRest = numel(vec_rest);
 data = load(fname);
 rising = struct;
-rising.all = utils.parse_sync(data.sync, 0, 'InvertLogic', false);
+if isempty(data.sync)
+    rising.all = 1;
+else
+    rising.all = utils.parse_sync(data.sync(end,:), options.SyncMask, 'InvertLogic', false);
+end
 if isempty(rising.all)
     rising.all = 1;
 end
 data.t = (0:(size(data.uni,2)-1))./data.sample_rate;
-all_gesture = bitand(data.sync,1)==1;
-all_rest = bitand(data.sync,1)==0;
+all_gesture = bitand(data.sync(end,:),options.SyncMask)==1;
+all_rest = bitand(data.sync(end,:),options.SyncMask)==0;
 if options.RemoveFirstPulse && (numel(rising.all) > 1)
     rising.all(1) = []; % Remove sync blip from Prakarsh Gesture GUI
 end
