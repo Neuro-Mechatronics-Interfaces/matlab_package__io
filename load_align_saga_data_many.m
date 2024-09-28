@@ -196,7 +196,7 @@ for ik = 1:m
         end
         if options.ApplySpatialFilter
             switch options.SpatialFilterMode
-                case 'SD Rows'
+                case 'SD Columns'
                     if options.IsTextile64
                         for iGrid = 1:2
                             tmp_index = (1:32) + (iGrid-1)*32;
@@ -206,7 +206,7 @@ for ik = 1:m
                     else
                         uni = reshape(gradient(reshape(uni,8,8,[])),64,[]);
                     end
-                case 'SD Columns'
+                case 'SD Rows'
                     if options.IsTextile64
                         for iGrid = 1:2
                             tmp_index = (1:32) + (iGrid-1)*32;
