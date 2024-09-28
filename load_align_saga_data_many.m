@@ -68,6 +68,7 @@ arguments
     options.InitialPulseOffset (1,1) {mustBeInteger} = 0; % Samples prior to first rising pulse, to include.
     options.InvertLogic logical = [];
     options.SampleRate (1,1) double {mustBeMember(options.SampleRate, [2000, 4000])} = 4000;
+    options.SpatialFilterMode (1,1) {mustBeMember(options.SpatialFilterMode, {'SD Columns', 'SD Rows', 'Laplacian'})} = 'SD Rows';
     options.TriggerChannelIndicator {mustBeTextScalar} = 'TRIG';
     options.TriggerBitMask = [];
     options.IsTextile64 (1,1) logical = true;
@@ -194,14 +195,38 @@ for ik = 1:m
             rms_bad = false(size(r));
         end
         if options.ApplySpatialFilter
-            if options.IsTextile64
-                for iGrid = 1:2
-                    tmp_index = (1:32) + (iGrid-1)*32;
-                    tmp_grid = gradient(reshape(uni(tmp_index,:),8,4,[]));
-                    uni(tmp_index,:) = reshape(tmp_grid,32,[]);
-                end
-            else
-                uni = reshape(gradient(reshape(uni,8,8,[])),64,[]);
+            switch options.SpatialFilterMode
+                case 'SD Rows'
+                    if options.IsTextile64
+                        for iGrid = 1:2
+                            tmp_index = (1:32) + (iGrid-1)*32;
+                            tmp_grid = gradient(reshape(uni(tmp_index,:),8,4,[]));
+                            uni(tmp_index,:) = reshape(tmp_grid,32,[]);
+                        end
+                    else
+                        uni = reshape(gradient(reshape(uni,8,8,[])),64,[]);
+                    end
+                case 'SD Columns'
+                    if options.IsTextile64
+                        for iGrid = 1:2
+                            tmp_index = (1:32) + (iGrid-1)*32;
+                            [~,tmp_grid] = gradient(reshape(uni(tmp_index,:),8,4,[]));
+                            uni(tmp_index,:) = reshape(tmp_grid,32,[]);
+                        end
+                    else
+                        [~,tmp_grid] = gradient(reshape(uni,8,8,[]));
+                        uni = reshape(tmp_grid,64,[]);
+                    end
+                case 'Laplacian'
+                    if options.IsTextile64
+                        for iGrid = 1:2
+                            tmp_index = (1:32) + (iGrid-1)*32;
+                            tmp_grid = del2(reshape(uni(tmp_index,:),8,4,[]));
+                            uni(tmp_index,:) = reshape(tmp_grid,32,[]);
+                        end
+                    else
+                        uni = reshape(del2(reshape(uni,8,8,[])),64,[]);
+                    end
             end
         elseif options.ApplyCAR
             if options.IsTextile64
