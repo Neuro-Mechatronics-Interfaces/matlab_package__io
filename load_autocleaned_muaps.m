@@ -18,20 +18,43 @@ arguments
     trialIndex (1,1) {mustBeInteger}
     options.File {mustBeTextScalar} = "";
     options.InputRoot = "C:/Data/MetaWB";
-    %options.InputSubfolder = "MotorUnits Decomposition/Decomposition Output/Auto";
-    options.InputSubfolder = "Decomposition/CKC/Auto";
+    options.InputSubfolder = "MotorUnits Decomposition/Decomposition Output/Auto";
     options.Subject = "MCP04";
     options.Year = 2024;
     options.Month = 5;
     options.Day = 16;
     options.FileTag = "synchronized_mod";
-    options.BaseColormap (:,3) double {mustBeInRange(options.BaseColormap,0,1)} = jet(256);
+    options.BaseColormap (:,3) double {mustBeInRange(options.BaseColormap,0,1)} = double([cm.umap([166 25 46]./255,32); ...
+        cm.umap([51 63 72]./255,32); ...
+        cm.umap([240 90 40]./255,32); ...
+        cm.umap([164 97 164]./255,32);...
+        cm.umap([255 184 28]./255,32); ...
+        cm.umap([0 178 169]./255,32);...
+        cm.umap([124 194 66]./255,32); ...
+        cm.umap([108 172 228]./255,32)])./255.0;
 end
 if strlength(options.File) < 1
     TANK = sprintf('%s_%04d_%02d_%02d', options.Subject, options.Year, options.Month, options.Day);
-    fname = fullfile(options.InputRoot, TANK, options.InputSubfolder, sprintf('%s_%d_%s.mat', TANK, trialIndex, options.FileTag));
+    expr = sprintf('%s_%d*%s.mat', TANK, trialIndex, options.FileTag);
+    f_expr = fullfile(options.InputRoot, TANK, options.InputSubfolder, expr);
+    F = dir(f_expr);
+    if ~isempty(F)
+        if numel(F) > 1
+            warning("Multiple matches for '%s'; using first file (%s).", expr, F(1).name);
+        end
+        fname = fullfile(F(1).folder,F(1).name);
+    else
+        data = [];
+        metadata = [];
+        return;
+    end
 else
     fname = options.File;
+end
+if exist(fname,'file')==0
+    data = [];
+    metadata = [];
+    return;
 end
 data = load(fname);
 metadata = struct;
