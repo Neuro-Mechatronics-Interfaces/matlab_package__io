@@ -23,7 +23,7 @@ arguments
     options.Year = 2024;
     options.Month = 5;
     options.Day = 16;
-    options.FileTag = "synchronized_mod";
+    options.FileTag = "synchronized*mod";
     options.BaseColormap (:,3) double {mustBeInRange(options.BaseColormap,0,1)} = double([cm.umap([166 25 46]./255,32); ...
         cm.umap([51 63 72]./255,32); ...
         cm.umap([240 90 40]./255,32); ...
@@ -35,7 +35,7 @@ arguments
 end
 if strlength(options.File) < 1
     TANK = sprintf('%s_%04d_%02d_%02d', options.Subject, options.Year, options.Month, options.Day);
-    expr = sprintf('%s_%d*%s.mat', TANK, trialIndex, options.FileTag);
+    expr = sprintf('%s_%d_%s.mat', TANK, trialIndex, options.FileTag);
     f_expr = fullfile(options.InputRoot, TANK, options.InputSubfolder, expr);
     F = dir(f_expr);
     if ~isempty(F)

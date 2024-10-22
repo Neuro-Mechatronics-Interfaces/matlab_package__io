@@ -68,7 +68,7 @@ arguments
     options.InitialPulseOffset (1,1) {mustBeInteger} = 0; % Samples prior to first rising pulse, to include.
     options.InvertLogic logical = [];
     options.SampleRate (1,1) double {mustBeMember(options.SampleRate, [2000, 4000])} = 4000;
-    options.SpatialFilterMode (1,1) {mustBeMember(options.SpatialFilterMode, {'SD Columns', 'SD Rows', 'Laplacian'})} = 'SD Rows';
+    options.SpatialFilterMode {mustBeMember(options.SpatialFilterMode, {'SD Columns', 'SD Rows', 'Laplacian'})} = 'SD Rows';
     options.TriggerChannelIndicator {mustBeTextScalar} = 'TRIG';
     options.TriggerBitMask = [];
     options.IsTextile64 (1,1) logical = true;
