@@ -61,6 +61,7 @@ arguments
     options.ApplyGridInterpolation (1,1) logical = true;
     options.ApplySpatialFilter (1,1) logical = false;
     options.ApplyRMSCutoff (1,1) logical = false;
+    options.Debug (1,1) logical = false;
     options.ExcludedPulseIndices (1,:) {mustBeInteger,mustBePositive} = [];
     options.HighpassFilterCutoff (1,1) double = 100;
     options.RMSCutoff (1,2) double = [1, 100];
@@ -72,7 +73,8 @@ arguments
     options.TriggerChannelIndicator {mustBeTextScalar} = 'TRIG';
     options.TriggerBitMask = [];
     options.IsTextile64 (1,1) logical = true;
-    options.TextileTo8x8GridMapping (:,64) {mustBeInteger, mustBeInRange(options.TextileTo8x8GridMapping,1,64)} = [17 16 15	14 13 9	5 1	22 21 20 19	18 10 6	2 27 26	25 24 23 11	7 3	32 31 30 29	28 12 8	4 33 34 35 36 37 53 57 61 38 39 40 41 42 54 58 62 43 44 45 46 47 55 59 63 48 49 50 51 52 56 60 64];
+    options.SwappedTextileCables (1,:) logical = false;
+    options.TextileTo8x8GridMapping (:,64) {mustBeInteger, mustBeInRange(options.TextileTo8x8GridMapping,1,64)} = [];
     options.TabletFile {mustBeTextScalar} = "SUBJ_YYYY_MM_DD_TABLET_BLOCK.bin";
     options.InputRoot = "";
     options.UseFirstSampleIfNoSyncPulse (1,1) logical = false;
@@ -89,23 +91,39 @@ for ik = 1:m
 end
 
 [b_hpf,a_hpf] = butter(3,options.HighpassFilterCutoff/(options.SampleRate/2),'high');
-if isempty(options.ManualSyncIndex)
-    manualSync = [];
-elseif isscalar(options.ManualSyncIndex)
-    manualSync = ones(n,m).*options.ManualSyncIndex;
-else
-    manualSync = options.ManualSyncIndex;
-end
-iStart = nan(n,m);
-nTotal = nan(n,m);
+% if isempty(options.ManualSyncIndex)
+%     manualSync = [];
+% elseif isscalar(options.ManualSyncIndex)
+%     manualSync = ones(n,m).*options.ManualSyncIndex;
+% else
+%     manualSync = options.ManualSyncIndex;
+% end
+% iStart = nan(n,m);
+% nTotal = nan(n,m);
 sync = cell(n,m);
 all_samples = cell(n,m);
 ch_name = cell(n,1);
-if size(options.TextileTo8x8GridMapping,1)==1 && (n > 1)
-    chMap = repmat(options.TextileTo8x8GridMapping,n,1);
-else
-    chMap = options.TextileTo8x8GridMapping;
+if options.IsTextile64
+    if isempty(options.TextileTo8x8GridMapping)
+        if isscalar(options.SwappedTextileCables)
+            swappedCables = repmat(options.SwappedTextileCables,1,n);
+        else
+            swappedCables = options.SwappedTextileCables;
+        end
+        chMap = nan(n,64);
+        for ii = 1:n
+            chMap(ii,:) = io.textile_8x8_uni2grid_mapping(swappedCables(ii));
+        end
+    else
+        if size(options.TextileTo8x8GridMapping,1)==1 && (n > 1)
+            chMap = repmat(options.TextileTo8x8GridMapping,n,1);
+        else
+            chMap = options.TextileTo8x8GridMapping;
+        end
+    end
 end
+n_samp = zeros(n,m);
+iTrig = cell(n,1);
 for ik = 1:m
     for ii = 1:n
         if iscell(raw{ii,ik}.channels)
@@ -114,25 +132,25 @@ for ik = 1:m
         else
             ch_name{ii} = {raw{ii,ik}.channels.name};
         end
-        iTrig = contains(ch_name{ii},options.TriggerChannelIndicator);
+        iTrig{ii} = contains(ch_name{ii},options.TriggerChannelIndicator);
         iUni = (contains(ch_name{ii},'R') & contains(ch_name{ii},'C') & ~contains(ch_name{ii},'E')) | (contains(ch_name{ii},'UNI'));
         iBip = contains(ch_name{ii},'BIP');
         if raw{ii,ik}.sample_rate < options.SampleRate
             
             samples = resample(raw{ii,ik}.samples,2,1,Dimension=2);
-            if nnz(iTrig)>0
-                samples(iTrig,:) = repelem(raw{ii,ik}.samples(iTrig,:),1,2);
+            if nnz(iTrig{ii})>0
+                samples(iTrig{ii},:) = repelem(raw{ii,ik}.samples(iTrig{ii},:),1,2);
             end
-            n_samp = size(samples,2);
+            n_samp(ii,ik) = size(samples,2);
         elseif raw{ii,ik}.sample_rate > options.SampleRate
             samples = resample(raw{ii,ik}.samples,1,2,Dimension=2);
-            if nnz(iTrig)>0
-                samples(iTrig,:) = raw{ii,ik}.samples(iTrig,1:2:end);
+            if nnz(iTrig{ii})>0
+                samples(iTrig{ii},:) = raw{ii,ik}.samples(iTrig{ii},1:2:end);
             end
-            n_samp = size(samples,2);
+            n_samp(ii,ik) = size(samples,2);
         else
             samples = raw{ii,ik}.samples;
-            n_samp = raw{ii,ik}.num_samples;
+            n_samp(ii,ik) = raw{ii,ik}.num_samples;
         end
         
         
@@ -150,7 +168,7 @@ for ik = 1:m
             ch_name{ii} = [ch_name{ii}(1:(iInsert-1)), nameInsert, ch_name{ii}(iInsert:end)];
             iUni = (contains(ch_name{ii},'R') & contains(ch_name{ii},'C') & ~contains(ch_name{ii},'E')) | (contains(ch_name{ii},'UNI'));
             iBip = contains(ch_name{ii},'BIP');
-            iTrig = contains(ch_name{ii},options.TriggerChannelIndicator);
+            iTrig{ii} = contains(ch_name{ii},options.TriggerChannelIndicator);
         end
 
         if options.ApplyFilter
@@ -244,103 +262,120 @@ for ik = 1:m
         end
         samples(iUni,:) = uni;
     
-        if isempty(manualSync)
-            if sum(iTrig) == 0
-                error("No channel name contains %s--were triggers saved?", options.TriggerChannelIndicator);
-            end
-            % trigdata = round(samples(iTrig,:)); % Have to round due to interpolation
-            % samples(iTrig,:) = trigdata;
-            trigdata = raw{ii,ik}.samples(iTrig,:);
-            if isempty(options.TriggerBitMask)
-                trigMax = max(trigdata);
-                trigMin = min(trigdata);
-                trigBitMask = trigMax - trigMin;
-            else
-                if isscalar(options.TriggerBitMask)
-                    trigBitMask = options.TriggerBitMask;
-                else
-                    trigBitMask = options.TriggerBitMask(ii);
-                end
-            end
-            if isempty(options.InvertLogic)
-                trigmasked = bitand(trigdata,trigBitMask)==trigBitMask;
-            else
-                if isscalar(options.InvertLogic)
-                    if options.InvertLogic
-                        trigmasked = bitand(trigdata,trigBitMask)~=trigBitMask;
-                    else
-                        trigmasked = bitand(trigdata,trigBitMask)==trigBitMask;
-                    end
-                else
-                    if options.InvertLogic(ii)
-                        trigmasked = bitand(trigdata,trigBitMask)~=trigBitMask;
-                    else
-                        trigmasked = bitand(trigdata,trigBitMask)==trigBitMask;
-                    end
-                end
-            end
-            rising = find(trigmasked);
-            if raw{ii,ik}.sample_rate > options.SampleRate
-                rising = ceil(rising/2);
-            elseif raw{ii,ik}.sample_rate < options.SampleRate
-                rising = min(rising*2, size(samples,2));
-            end
-            if isempty(rising)
-                error("io:load_align_saga_data_many:no_sync","No rising pulses detected (trigBitMask = %s)",dec2bin(trigBitMask));
-            end
-            if numel(rising) > 1
-                rising = rising([rising(1)~=1, diff(rising) > 1]);
-            end
-            if isempty(rising)
-                if options.UseFirstSampleIfNoSyncPulse
-                    rising = 1;
-                else
-                    error("io:load_align_saga_data_many:no_sync","No rising pulses detected (trigBitMask = %s)",dec2bin(trigBitMask));
-                end
-            end
-            falling = find(~trigmasked);
-
-            if raw{ii,ik}.sample_rate > options.SampleRate
-                falling = ceil(falling/2);
-            elseif raw{ii,ik}.sample_rate < options.SampleRate
-                falling = min(falling*2, size(samples,2));
-            end
-            if isempty(falling)
-                if options.UseFirstSampleIfNoSyncPulse
-                    falling = size(samples,2);
-                else
-                    error("io:load_align_saga_data_many:no_sync","No rising pulses detected (trigBitMask = %s)",dec2bin(trigBitMask));
-                end
-            end
-            if numel(falling) > 1
-                falling = falling([falling(1)~=1, diff(falling) > 1]);
-            end
-            if ~isempty(falling)
-                if (falling(1)) < rising(1)
-                    tmp = falling;
-                    falling = rising;
-                    rising = tmp;
-                end
-            end
-            rising(options.ExcludedPulseIndices) = [];
-            if ~isempty(falling)
-                falling(options.ExcludedPulseIndices) = [];
-            end
-            iStart(ii,ik) = rising(1) - options.InitialPulseOffset;
+        % if isempty(manualSync)
+        %     if sum(iTrig) == 0
+        %         error("No channel name contains %s--were triggers saved?", options.TriggerChannelIndicator);
+        %     end
+        %     % trigdata = round(samples(iTrig,:)); % Have to round due to interpolation
+        %     % samples(iTrig,:) = trigdata;
+        %     trigdata = raw{ii,ik}.samples(iTrig,:);
+        %     if isempty(options.TriggerBitMask)
+        %         trigMax = max(trigdata);
+        %         trigMin = min(trigdata);
+        %         trigBitMask = trigMax - trigMin;
+        %     else
+        %         if isscalar(options.TriggerBitMask)
+        %             trigBitMask = options.TriggerBitMask;
+        %         else
+        %             trigBitMask = options.TriggerBitMask(ii);
+        %         end
+        %     end
+        %     if isempty(options.InvertLogic)
+        %         trigmasked = bitand(trigdata,trigBitMask)==trigBitMask;
+        %     else
+        %         if isscalar(options.InvertLogic)
+        %             if options.InvertLogic
+        %                 trigmasked = bitand(trigdata,trigBitMask)~=trigBitMask;
+        %             else
+        %                 trigmasked = bitand(trigdata,trigBitMask)==trigBitMask;
+        %             end
+        %         else
+        %             if options.InvertLogic(ii)
+        %                 trigmasked = bitand(trigdata,trigBitMask)~=trigBitMask;
+        %             else
+        %                 trigmasked = bitand(trigdata,trigBitMask)==trigBitMask;
+        %             end
+        %         end
+        %     end
+        %     rising = find(trigmasked);
+        %     if raw{ii,ik}.sample_rate > options.SampleRate
+        %         rising = ceil(rising/2);
+        %     elseif raw{ii,ik}.sample_rate < options.SampleRate
+        %         rising = min(rising*2, size(samples,2));
+        %     end
+        %     if isempty(rising)
+        %         error("io:load_align_saga_data_many:no_sync","No rising pulses detected (trigBitMask = %s)",dec2bin(trigBitMask));
+        %     end
+        %     if numel(rising) > 1
+        %         rising = rising([rising(1)~=1, diff(rising) > 1]);
+        %     end
+        %     if isempty(rising)
+        %         if options.UseFirstSampleIfNoSyncPulse
+        %             rising = 1;
+        %         else
+        %             error("io:load_align_saga_data_many:no_sync","No rising pulses detected (trigBitMask = %s)",dec2bin(trigBitMask));
+        %         end
+        %     end
+        %     falling = find(~trigmasked);
+        % 
+        %     if raw{ii,ik}.sample_rate > options.SampleRate
+        %         falling = ceil(falling/2);
+        %     elseif raw{ii,ik}.sample_rate < options.SampleRate
+        %         falling = min(falling*2, size(samples,2));
+        %     end
+        %     if isempty(falling)
+        %         if options.UseFirstSampleIfNoSyncPulse
+        %             falling = size(samples,2);
+        %         else
+        %             error("io:load_align_saga_data_many:no_sync","No rising pulses detected (trigBitMask = %s)",dec2bin(trigBitMask));
+        %         end
+        %     end
+        %     if numel(falling) > 1
+        %         falling = falling([falling(1)~=1, diff(falling) > 1]);
+        %     end
+        %     if ~isempty(falling)
+        %         if (falling(1)) < rising(1)
+        %             tmp = falling;
+        %             falling = rising;
+        %             rising = tmp;
+        %         end
+        %     end
+        %     rising(options.ExcludedPulseIndices) = [];
+        %     if ~isempty(falling)
+        %         falling(options.ExcludedPulseIndices) = [];
+        %     end
+        %     iStart(ii,ik) = rising(1) - options.InitialPulseOffset;
+        % else
+        %     iStart(ii,ik) = manualSync(ii,ik);
+        %     rising = iStart(ii,ik);
+        %     falling = iStart(ii,ik)+1;
+        % end
+        % sync{ii,ik} = struct('rising',rising - iStart(ii,ik) + 1,'falling',falling - iStart(ii,ik) + 1);
+        % if iStart(ii,ik) < 1
+        %     error("InitialPulseOffset value may be too large, cannot start indexing from %d.", iStart(ii,ik));
+        % end
+        % nTotal(ii,ik) = n_samp - iStart(ii,ik) + 1;
+        % all_samples{ii,ik} = samples(:,iStart(ii,ik):end);
+        all_samples{ii,ik} = samples;
+    end
+    sync_target = all_samples{1,ik}(iTrig{1},:);
+    for ii = 2:n
+        [rho,lags] = xcorr(sync_target, all_samples{ii,ik}(iTrig{ii},:));
+        [~,imax] = max(rho);
+        if lags(imax) < 0
+            all_samples{1,ik} = [zeros(size(all_samples{1,ik},1),-lags(imax)),all_samples{1,ik}];
+            sync_target = all_samples{1,ik}(iTrig{1},:);
+            ii = 2; %#ok<FXSET,NASGU>
         else
-            iStart(ii,ik) = manualSync(ii,ik);
-            rising = iStart(ii,ik);
-            falling = iStart(ii,ik)+1;
+            all_samples{ii,ik} = [zeros(size(all_samples{ii,ik},1),lags(imax)),all_samples{ii,ik}];
         end
-        sync{ii,ik} = struct('rising',rising - iStart(ii,ik) + 1,'falling',falling - iStart(ii,ik) + 1);
-        if iStart(ii,ik) < 1
-            error("InitialPulseOffset value may be too large, cannot start indexing from %d.", iStart(ii,ik));
-        end
-        nTotal(ii,ik) = n_samp - iStart(ii,ik) + 1;
-        all_samples{ii,ik} = samples(:,iStart(ii,ik):end);
+    end
+    for ii = 1:n
+        n_samp(ii,ik) = size(all_samples{ii,ik},2);
     end
 end
-n_min = min(nTotal,[],1);
+
+n_min = min(sum(n_samp,2),[],1);
 for ik = 1:m
     cat_samples = [];
     for ii = 1:n

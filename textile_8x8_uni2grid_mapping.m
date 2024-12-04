@@ -23,7 +23,7 @@ function channelOrder = textile_8x8_uni2grid_mapping(swapped_cables)
 % See also: Contents, TMSiSAGA.Poly5
 
 arguments
-    swapped_cables (1,1) logical = true;
+    swapped_cables (1,1) logical = false;
 end
 if swapped_cables
     channelOrder = [64	60	56	52	51	50	49	48	63	59	55	47	46	45	44	43	62	58	54	42	41	40	39	38	61	57	53	37	36	35	34	33	4	8	12	28	29	30	31	32	3	7	11	23	24	25	26	27	2	6	10	18	19	20	21	22	1	5	9	13	14	15	16	17];
