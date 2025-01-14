@@ -16,7 +16,10 @@ function logData = readGamepadLog(filename)
 
 % Define the structure of each log entry
 entrySize = 14; % 8 bytes for timestamp, 1 byte for assertionState, 1 byte for taskState, 4 bytes for curFrameIndex
-
+[p,f,e] = fileparts(filename);
+if isempty(e)
+    filename = fullfile(p,sprintf('%s.reactions', f));
+end
 % Open the file for reading in binary mode
 fid = fopen(filename, 'rb');
 if fid == -1

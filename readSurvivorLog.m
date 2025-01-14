@@ -26,6 +26,10 @@ function survivorLog = readSurvivorLog(filename)
 entrySize = 20; % 8 bytes for timestamp, 1 byte for dx, 1 byte for dy, 1 byte for "a", 1 byte for "b", 2 bytes for score, 2 bytes for health, 2 bytes for player-state, 2 bytes for enemy counter
 
 % Open the file for reading in binary mode
+[p,f,e] = fileparts(filename);
+if isempty(e)
+    filename = fullfile(p,sprintf('%s.survivor',f));
+end
 fid = fopen(filename, 'rb');
 if fid == -1
     error('Failed to open file: %s', filename);
