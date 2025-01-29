@@ -72,7 +72,7 @@ arguments
     options.SpatialFilterMode {mustBeMember(options.SpatialFilterMode, {'SD Columns', 'SD Rows', 'Laplacian'})} = 'SD Rows';
     options.TriggerChannelIndicator {mustBeTextScalar} = 'TRIG';
     options.TriggerBitMask = [];
-    options.IsTextile64 (1,1) logical = true;
+    options.IsTextile64 (:,1) logical = true;
     options.SwappedTextileCables (1,:) logical = false;
     options.TextileTo8x8GridMapping (:,64) {mustBeInteger, mustBeInRange(options.TextileTo8x8GridMapping,1,64)} = [];
     options.TabletFile {mustBeTextScalar} = "SUBJ_YYYY_MM_DD_TABLET_BLOCK.bin";
@@ -103,25 +103,32 @@ end
 sync = cell(n,m);
 all_samples = cell(n,m);
 ch_name = cell(n,1);
-if options.IsTextile64
-    if isempty(options.TextileTo8x8GridMapping)
-        if isscalar(options.SwappedTextileCables)
-            swappedCables = repmat(options.SwappedTextileCables,1,n);
+chMap = repmat(1:64,n,1);
+if isscalar(options.SwappedTextileCables)
+    swappedCables = repmat(options.SwappedTextileCables,1,n);
+else
+    swappedCables = options.SwappedTextileCables;
+end
+if isscalar(options.IsTextile64)
+    isTextile64 = repmat(options.IsTextile64,n,1);
+else
+    isTextile64 = options.IsTextile64;
+end
+
+for ik = 1:n
+    if isTextile64(ik)
+        if isempty(options.TextileTo8x8GridMapping)
+            chMap(ik,:) = io.textile_8x8_uni2grid_mapping(swappedCables(ii));
         else
-            swappedCables = options.SwappedTextileCables;
-        end
-        chMap = nan(n,64);
-        for ii = 1:n
-            chMap(ii,:) = io.textile_8x8_uni2grid_mapping(swappedCables(ii));
-        end
-    else
-        if size(options.TextileTo8x8GridMapping,1)==1 && (n > 1)
-            chMap = repmat(options.TextileTo8x8GridMapping,n,1);
-        else
-            chMap = options.TextileTo8x8GridMapping;
+            if size(options.TextileTo8x8GridMapping,1)==1 && (n > 1)
+                chMap(ik,:) = options.TextileTo8x8GridMapping;
+            else
+                chMap(ik,:) = options.TextileTo8x8GridMapping(ik,:);
+            end
         end
     end
 end
+
 n_samp = zeros(n,m);
 iTrig = cell(n,1);
 for ik = 1:m
@@ -136,7 +143,7 @@ for ik = 1:m
         iUni = (contains(ch_name{ii},'R') & contains(ch_name{ii},'C') & ~contains(ch_name{ii},'E')) | (contains(ch_name{ii},'UNI'));
         iBip = contains(ch_name{ii},'BIP');
         if raw{ii,ik}.sample_rate < options.SampleRate
-            
+
             samples = resample(raw{ii,ik}.samples,2,1,Dimension=2);
             if nnz(iTrig{ii})>0
                 samples(iTrig{ii},:) = repelem(raw{ii,ik}.samples(iTrig{ii},:),1,2);
@@ -152,8 +159,8 @@ for ik = 1:m
             samples = raw{ii,ik}.samples;
             n_samp(ii,ik) = raw{ii,ik}.num_samples;
         end
-        
-        
+
+
         if sum(iUni) < 64
             iInsert = find(iUni,1,'first');
             samples = [samples(1:(iInsert-1),:); zeros(64-sum(iUni),size(samples,2)); samples(iInsert:end,:)];
@@ -174,7 +181,7 @@ for ik = 1:m
         if options.ApplyFilter
             samples(iUni | iBip,:) = filtfilt(b_hpf,a_hpf,samples(iUni | iBip,:)')';
         end
-        
+
         % Apply grid-specific sampling, if specified:
         iUniIndex = find(iUni);
         if options.IsTextile64
@@ -185,9 +192,9 @@ for ik = 1:m
             iUniIndex = iUniIndex(chMap(ii,:));
         end
         uni = samples(iUniIndex,:);
-        
+
         r = rms(uni,2);
-        
+
         if options.ApplyRMSCutoff
             rms_bad = (r < options.RMSCutoff(1)) | (r >= options.RMSCutoff(2));
             uni(rms_bad,:) = missing;
@@ -261,7 +268,7 @@ for ik = 1:m
             uni(any(ismissing(uni),2),:) = 0;
         end
         samples(iUni,:) = uni;
-    
+
         % if isempty(manualSync)
         %     if sum(iTrig) == 0
         %         error("No channel name contains %s--were triggers saved?", options.TriggerChannelIndicator);
@@ -317,7 +324,7 @@ for ik = 1:m
         %         end
         %     end
         %     falling = find(~trigmasked);
-        % 
+        %
         %     if raw{ii,ik}.sample_rate > options.SampleRate
         %         falling = ceil(falling/2);
         %     elseif raw{ii,ik}.sample_rate < options.SampleRate
@@ -398,7 +405,7 @@ else
     tablet_file = options.TabletFile;
 end
 if exist(tablet_file,'file')~=0
-    
+
     data.tablet = io.load_tablet_data(tablet_file);
     i_sync_device = find(contains(poly5_files,data.tablet.Properties.UserData.SyncDeviceTag),1,'first');
     if ~isempty(i_sync_device)
