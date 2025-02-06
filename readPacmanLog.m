@@ -5,17 +5,9 @@ function data = readPacmanLog(filename)
 % Returns:
 %   data (struct): Struct containing parsed log entries
 
-% Define the structure of the binary log format
-entryFormat = {
-    'double', 1;  % Timestamp (8 bytes)
-    'int32', 1;  % Score (4 bytes)
-    'int32', 1;  % Speed (4 bytes)
-    'double', 1;
-    };
-fixedEntrySize = sum(cellfun(@(x) getDataTypeSize(x) * 1, entryFormat(:, 1)));
 
 % Size of the binary chunk (logged chunk size from Lua)
-chunkSize = 0x1C09B10B - 0x1C09B088 + 1; % Adjust this based on your Lua logic
+% chunkSize = 0x1C09B10B - 0x1C09B088 + 1; % This is based on the Lua logger logic
 
 % Open the binary file for reading
 fid = fopen(filename, 'rb');
@@ -24,31 +16,59 @@ if fid == -1
 end
 
 % Read the file data
-data = struct('Timestamp', {}, 'Score', {}, 'Speed', {}, 'Chunk', {int8.empty});
+nGhosts = 64;
+data = struct('Timestamp', {}, 'Score', {}, 'Speed', {}, 'Bombs', {}, 'Lives', {}, 'X', {}, 'Y', {}, 'GhostX', {}, 'GhostY', {}, 'GhostVisible', {});
 try
+    tStart = fread(fid,1,'double');
+    logVersion = fread(fid,1,'int32');
+    playerName = fread(fid,8,"uint8");
+    playerName = string(char(playerName(playerName>0)'));
     while ~feof(fid)
         % Read the fixed-size portion of the log entry
         timestamp = fread(fid, 1, 'double');
         if isempty(timestamp)
             break;
         end
-        score = fread(fid, 1, 'int');
-        speed = fread(fid, 1, 'int');
-
-        % Read the binary chunk
-        chunk = fread(fid, chunkSize, 'int8');
-        if length(chunk) ~= chunkSize
-            warning('Incomplete chunk detected at the end of the file.');
-            break;
+        score = fread(fid, 1, 'int32');
+        speed = fread(fid, 1, 'int32');
+        bombs = fread(fid, 1, 'int32');
+        lives = fread(fid, 1, 'int32');
+        x = fread(fid,1,"float");
+        y = fread(fid,1,"float");
+        gx = zeros(1,nGhosts);
+        gy = zeros(1,nGhosts);
+        gv = false(1,nGhosts);
+        for ik = 1:nGhosts
+            tmp = fread(fid, 1, "float");
+            if numel(tmp) ~= 1
+                fseek(fid,-4,"cof");
+                break;
+            end
+            gx(ik) = tmp;
+            gy(ik) = fread(fid, 1, "float");
+            gv(ik) = fread(fid, 1, "uint8") == 1;
         end
+
+        % % Read the binary chunk
+        % chunk = fread(fid, chunkSize, 'uint8');
+        % if length(chunk) ~= chunkSize
+        %     warning('Incomplete chunk detected at the end of the file.');
+        %     break;
+        % end
 
         % Store the parsed entry into the struct
         entry = struct(...
             'Timestamp', timestamp, ...
             'Score', score, ...
             'Speed', speed, ...
-            'Chunk', int8(chunk)' ...
-            );
+            'Bombs', bombs, ...
+            'Lives', lives, ...
+            'X', x, ...
+            'Y', y, ...
+            'GhostX', gx, ...
+            'GhostY', gy, ...
+            'GhostVisible', gv ...
+            ); 
         data = [data; entry]; %#ok<AGROW>
     end
     % keepRow = true(numel(data),1);
@@ -62,24 +82,17 @@ catch ME
 end
 
 fclose(fid);
+data = struct2table(data);
+data = sortrows(data,'Timestamp','ascend');
+missing_ghost = false(1,nGhosts);
+for ii = 1:nGhosts
+    missing_ghost(ii) = all(abs(data.GhostX(:,ii))<eps) & all(abs(data.GhostY(:,ii))<eps);
+end
+data.GhostX(:,missing_ghost) = [];
+data.GhostY(:,missing_ghost) = [];
+data.GhostVisible(:,missing_ghost) = [];
+data.Properties.UserData = struct('tStart', tStart, 'version', logVersion, 'player', playerName, ...
+    'nGhosts', nGhosts-nnz(missing_ghost));
+
 end
 
-function size = getDataTypeSize(dataType)
-% Helper function to get the size of a given data type in bytes
-switch dataType
-    case 'double'
-        size = 8;
-    case 'uint32'
-        size = 4;
-    case 'uint8'
-        size = 1;
-    case 'int32'
-        size = 4;
-    case 'int16'
-        size = 2;
-    case 'int8'
-        size = 1;
-    otherwise
-        error('Unknown data type: %s', dataType);
-end
-end
