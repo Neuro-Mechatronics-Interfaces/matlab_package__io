@@ -114,6 +114,11 @@ if isscalar(options.IsTextile64)
 else
     isTextile64 = options.IsTextile64;
 end
+if isscalar(options.TriggerBitMask)
+    trigBitMask = repmat(options.TriggerBitMask,n,1);
+else
+    trigBitMask = options.TriggerBitMask;
+end
 
 for ik = 1:n
     if isTextile64(ik)
@@ -365,14 +370,15 @@ for ik = 1:m
         % all_samples{ii,ik} = samples(:,iStart(ii,ik):end);
         all_samples{ii,ik} = samples;
     end
-    sync_target = all_samples{1,ik}(iTrig{1},:);
-    for ii = 2:n
-        [rho,lags] = xcorr(sync_target, all_samples{ii,ik}(iTrig{ii},:));
+    sync_target = bitand(all_samples{1,ik}(iTrig{1},:),trigBitMask(1))==0;
+
+    for ii = 1:n
+        [rho,lags] = xcorr(sync_target, bitand(all_samples{ii,ik}(iTrig{ii},:),trigBitMask(ii))==0);
         [~,imax] = max(rho);
         if lags(imax) < 0
-            all_samples{1,ik} = [zeros(size(all_samples{1,ik},1),-lags(imax)),all_samples{1,ik}];
-            sync_target = all_samples{1,ik}(iTrig{1},:);
-            ii = 2; %#ok<FXSET,NASGU>
+            % all_samples{1,ik} = [zeros(size(all_samples{1,ik},1),-lags(imax)),all_samples{1,ik}];
+            sync_target = bitand(all_samples{ii,ik}(iTrig{ii},:),trigBitMask(ii))==0;
+            ii = 1; %#ok<FXSET,NASGU>
         else
             all_samples{ii,ik} = [zeros(size(all_samples{ii,ik},1),lags(imax)),all_samples{ii,ik}];
         end
