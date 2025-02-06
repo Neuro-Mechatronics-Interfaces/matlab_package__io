@@ -310,9 +310,11 @@ fclose(fid);
         %   disp(trialData);
         %
         % See also: table2timetable, enum.BasicReactionState
+        
+        trialData = [];
         testEnum = what('enum');
         if isempty(testEnum)
-            trialData = [];
+            logData = [];
             return;
         end
         logData.TaskState = enum.BasicReactionState(logData.TaskState);
@@ -388,7 +390,7 @@ fclose(fid);
 
             iNext = findNextStateOnset(iNext,logData.TaskState,enum.BasicReactionState.TIMEOUT);
             if ~isempty(iNext)
-                if logData.Timestamp(iNext) < t_total(ii)
+                if logData.Timestamp(iNext) <= t_total(ii)
                     t_deassert(ii) = logData.Timestamp(iNext);
                     tau_deassert(ii) = seconds(t_deassert(ii) - t_deassert_hat(ii));
                     tau_hold(ii) = seconds(t_deassert(ii) - t_assert(ii));
@@ -398,10 +400,19 @@ fclose(fid);
                 end
             end
         end
+        if ~isempty(logData)
+            t_deassert(end) = logData.Timestamp(end);
+            tau_deassert(end) = seconds(t_deassert(end) - t_deassert_hat(end));
+            tau_hold(end) = seconds(t_deassert(end) - t_assert(end));
+            trial_outcome(end) = true;
+        end
         trialData = table(trial_counter, t_trial, t_ready, t_pre, t_assert_hat, t_assert, t_deassert_hat, t_deassert, t_total, tau_hold, tau_hold_hat, tau_assert, tau_deassert, trial_outcome);
-
         function iStart = findNextStateOnset(iBeginSearch,taskState,targetState)
             iSearch = iBeginSearch;
+            if isempty(iSearch) || isempty(taskState)
+                iStart = [];
+                return;
+            end
             while ((taskState(iSearch)~=targetState) && (iSearch < numel(taskState)))
                 iSearch = iSearch + 1;
             end
