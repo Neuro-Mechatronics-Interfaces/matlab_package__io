@@ -405,6 +405,19 @@ fclose(fid);
             tau_deassert(end) = seconds(t_deassert(end) - t_deassert_hat(end));
             tau_hold(end) = seconds(t_deassert(end) - t_assert(end));
             trial_outcome(end) = true;
+            
+            tmp = nan;
+            for ii = numel(tau_hold_hat):-1:1
+                if isnan(tau_hold_hat(ii))
+                    tau_hold_hat(ii) = tmp;
+                else
+                    tmp = tau_hold_hat(ii);
+                end
+            end
+            % Since we always re-use the hold times in the event of an
+            % unsuccessful trial, we can simply "fill" using the latest
+            % value since the value only changes and is non-NaN on
+            % successful trials. 
         end
         trialData = table(trial_counter, t_trial, t_ready, t_pre, t_assert_hat, t_assert, t_deassert_hat, t_deassert, t_total, tau_hold, tau_hold_hat, tau_assert, tau_deassert, trial_outcome);
         function iStart = findNextStateOnset(iBeginSearch,taskState,targetState)
