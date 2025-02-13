@@ -419,6 +419,22 @@ fclose(fid);
             % value since the value only changes and is non-NaN on
             % successful trials. 
         end
+        n_row = min([numel(trial_counter),numel(t_trial),numel(t_ready),numel(t_pre),numel(t_assert_hat),numel(t_assert),numel(t_deassert_hat),numel(t_deassert),numel(t_total),numel(tau_hold),numel(tau_hold_hat),numel(tau_deassert),numel(trial_outcome)]);
+        inc = (1:n_row)';
+        trial_counter = trial_counter(inc);
+        t_trial = t_trial(inc);
+        t_ready = t_ready(inc);
+        t_pre = t_pre(inc);
+        t_assert_hat = t_assert_hat(inc);
+        t_assert = t_assert(inc);
+        t_deassert = t_deassert(inc);
+        t_deassert_hat = t_deassert_hat(inc);
+        t_total = t_total(inc);
+        tau_hold = tau_hold(inc);
+        tau_hold_hat = tau_hold_hat(inc);
+        tau_assert = tau_assert(inc);
+        tau_deassert = tau_deassert(inc);
+        trial_outcome = trial_outcome(inc);
         trialData = table(trial_counter, t_trial, t_ready, t_pre, t_assert_hat, t_assert, t_deassert_hat, t_deassert, t_total, tau_hold, tau_hold_hat, tau_assert, tau_deassert, trial_outcome);
         function iStart = findNextStateOnset(iBeginSearch,taskState,targetState)
             iSearch = iBeginSearch;
