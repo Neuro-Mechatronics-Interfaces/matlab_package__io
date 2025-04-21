@@ -51,6 +51,8 @@ function [logData, trialData] = readTaskServerLog(filename, options)
 %    * `Frame` (uint32): The current frame index
 %    * `AssertionState` (int8): The gamepad assertion state (0 or 1)
 %    * `TaskState` (int8): The task state
+%    * `AckState` (int8): The acknowledged task state (or vector of zeros
+%                           if no socket connection); added in v4 Logs.
 %
 % See also: fopen, fread, fgetl, typecast, datetime
 
@@ -66,205 +68,207 @@ if fid == -1
     error('Failed to open file: %s', filename);
 end
 
-try
-    % Read the header size
-    fseek(fid, 0, 'bof');
-    headerText = '';
-    while true
-        line = fgetl(fid);
-        if line==-1  % We reached the end of the file somehow
-            break;
-        end
-        if ~ismember(line, '=')
-            fclose(fid);
-            break;
-        end
-        headerText = strcat(headerText, line, '\n');
+% Read the header size
+fseek(fid, 0, 'bof');
+headerText = '';
+while true
+    line = fgetl(fid);
+    if line==-1  % We reached the end of the file somehow
+        break;
     end
+    if ~ismember(line, '=')
+        fclose(fid);
+        break;
+    end
+    headerText = strcat(headerText, line, '\n');
+end
 
-    % Parse the header into a struct
-    headerLines = strsplit(string(headerText),"\\n");
-    header = struct();
-    dataStart = 1;
-    for i = 1:numel(headerLines)
-        keyValue = split(headerLines{i}, '=');
-        if length(keyValue) == 2
-            dataStart = dataStart + 1;
-            key = strtrim(keyValue{1});
-            value = strtrim(keyValue{2});
-            if isnumeric(str2double(value)) && ~isnan(str2double(value))
-                header.(key) = str2double(value);  % Convert numeric values
-            else
-                header.(key) = value;  % Keep strings as is
-            end
+% Parse the header into a struct
+headerLines = strsplit(string(headerText),"\\n");
+header = struct();
+dataStart = 1;
+for i = 1:numel(headerLines)
+    keyValue = split(headerLines{i}, '=');
+    if length(keyValue) == 2
+        dataStart = dataStart + 1;
+        key = strtrim(upper(keyValue{1}));
+        value = strtrim(keyValue{2});
+        if isnumeric(str2double(value)) && ~isnan(str2double(value))
+            header.(key) = str2double(value);  % Convert numeric values
+        else
+            header.(key) = value;  % Keep strings as is
         end
     end
-    % Validate required header fields
-    requiredFields = {'LOG_VERSION', 'HEADER_SIZE', 'TASK', 'SESSION', 'FILETYPE', 'FRAMESIZE', 'FIELDS'};
-    for i = 1:length(requiredFields)
-        if ~isfield(header, requiredFields{i})
+end
+% Validate required header fields
+requiredFields = {'LOG_VERSION', 'HEADER_SIZE', 'TASK', 'SESSION', 'FILETYPE', 'FRAMESIZE', 'FIELDS'};
+for i = 1:length(requiredFields)
+    if ~isfield(header, requiredFields{i})
+        if strcmpi(requiredFields{i},'LOG_VERSION')
+            warning("Missing required header: LOG_VERSION. Using Default value of 0.");
+        else
             error('Missing required header field: %s', requiredFields{i});
         end
     end
-
-    % Parse the fields description
-    fields = split(header.FIELDS, ',');
-    fieldSizes = zeros(length(fields),1);
-    fieldNames = strings(length(fields),1);
-    fieldEncoding = zeros(length(fields),1);
-    fieldType = cell(length(fields),1);
-    offset = 0;
-    for i = 1:length(fields)
-        [name, type] = strtok(fields{i}, ':');
-        fieldNames(i) = strtrim(name);
-        switch strtrim(type(2:end))
-            case 'Float64'
-                fieldSizes(i) = 8;
-                fieldEncoding(i) = 1;
-                fieldType{i} = 'double';
-            case 'Int8'
-                fieldSizes(i) = 1;
-                fieldEncoding(i) = 1;
-                fieldType{i} = 'int8';
-            case 'Uint8'
-                fieldSizes(i) = 1;
-                fieldEncoding(i) = 1;
-                fieldType{i} = 'uint8';
-            case 'Uint32'
-                fieldSizes(i) = 4;
-                fieldEncoding(i) = -1;
-                fieldType{i} = 'uint32';
-            case 'Int32'
-                fieldSizes(i) = 4;
-                fieldEncoding(i) = -1;
-                fieldType{i} = 'int32';
-            case 'Int16'
-                fieldSizes(i) = 2;
-                fieldEncoding(i) = -1;
-                fieldType{i} = 'int16';
-            case 'Uint16'
-                fieldSizes(i) = 2;
-                fieldEncoding(i) = -1;
-                fieldType{i} = 'uint16';
-            otherwise
-                error('Unsupported field type: %s', type);
-        end
-        offset = offset + fieldSizes(i);
-    end
-
-    % Ensure FRAMESIZE matches calculated field sizes
-    if offset ~= header.FRAMESIZE
-        error('FRAMESIZE in header does not match calculated field sizes.');
-    end
-
-    % Read the binary data
-    fid = fopen(filename, 'rb');
-    fseek(fid, header.HEADER_SIZE, 'bof');
-    fileData = fread(fid, '*uint8');  % Read as unsigned 8-bit integers
-
-    % Ensure file size is a multiple of the entry size
-    if mod(numel(fileData), header.FRAMESIZE) ~= 0
-        error('Corrupted file: File size is not a multiple of the entry size.');
-    end
-
-    % Calculate the number of entries
-    numEntries = numel(fileData) / header.FRAMESIZE;
-
-    % Preallocate arrays for efficiency
-    logDataStruct = struct();
-    for i = 1:length(fieldNames)
-        logDataStruct.(fieldNames{i}) = zeros(numEntries, 1);
-    end
-
-    % Parse the binary data
-    if options.Verbose
-        fprintf(1,'Parsing %s-type server binary log...000%%\n', header.FILETYPE);
-    end
-    for i = 1:numEntries
-        offset = (i - 1) * header.FRAMESIZE;
-
-        for j = 1:length(fieldNames)
-            fieldSize = fieldSizes(j);
-            if fieldEncoding(j) > 0
-                byteOrder = 1:fieldSize;
-            else
-                byteOrder = fieldSize:-1:1;
-            end
-            dataBytes = fileData(offset + byteOrder);
-            value = typecast(dataBytes, fieldType{j});
-            logDataStruct.(fieldNames{j})(i) = value;
-            offset = offset + fieldSize;
-        end
-        if options.Verbose
-            fprintf(1,'\b\b\b\b\b%03d%%\n', round(100*i/numEntries));
-        end
-    end
-
-    if isfield(logDataStruct,'Timestamp')
-        logDataStruct.Timestamp = datetime(logDataStruct.Timestamp ./ 1000, 'ConvertFrom', 'posixtime', 'TimeZone', 'UTC');
-        logDataStruct.Timestamp.TimeZone = 'America/New_York';
-        logDataStruct.Timestamp.Format = 'dd-MMM-uuuu HH:mm:ss.SSSSSS';
-    end
-
-    % Convert to MATLAB table
-    logData = struct2table(logDataStruct);
-    logData = table2timetable(logData);
-
-    switch header.FILETYPE
-        case 'reactions'
-            [trialData, logData] = parseReactionLogs(logData);
-            if isempty(trialData)
-                if options.Verbose
-                    warning("No +enum package detected on current PATH. No trialized log data available.\n");
-                end
-            else
-                if options.AutoPlot
-                    fig = figure('Color','w','Name','Auto-Plot of Reactions Trials', ...
-                        'WindowState','maximized');
-                    ax = axes(fig,'NextPlot','add','FontName','Tahoma');
-                    yyaxis(ax,'left');
-                    set(ax,'NextPlot','add','FontName','Tahoma',...
-                        'ColorOrder', [0 0 0], ...
-                        'YColor','k',...
-                        'YTick',[4 5],...
-                        'YTickLabel',["DE-ASSERTED", "ASSERTED"], ...
-                        'YLim',[-3.5, 5.5]);
-                    plot(ax, logData.Timestamp, logData.AssertionState+4);
-                    yyaxis(ax,'right');
-                    set(ax,...
-                        'NextPlot','add','FontName','Tahoma',...
-                        'YColor',[0.65 0.65 0.65],...
-                        'ColorOrder', [0.65 0.65 0.65], ...
-                        'YTick',-3:4,...
-                        'YTickLabel', strrep(string(enum.BasicReactionState(-3:4)),'_','\_'), ...
-                        'YLim',[-3.5, 5.5]);
-                    plot(ax, logData.Timestamp, logData.TaskState);
-                    title(ax, header.TASK, strrep(header.SESSION,'_','\_'), ...
-                        'FontName','Tahoma');
-                end
-            end
-        case 'survivor'
-            trialData = [];
-            if options.Verbose
-                fprintf(1,'No trialized-handling set up for survivor-type binary server logs (yet?)\n');
-            end
-        otherwise
-            fprintf(1,'No additional processing considered for fileType: "%s"\n', header.FILETYPE);
-    end
-    logData.Properties.UserData = header;
-
-catch ME
-    fclose(fid);
-    rethrow(ME);
 end
+
+% Parse the fields description
+fields = split(header.FIELDS, ',');
+fieldSizes = zeros(length(fields),1);
+fieldNames = strings(length(fields),1);
+fieldEncoding = zeros(length(fields),1);
+fieldType = cell(length(fields),1);
+offset = 0;
+for i = 1:length(fields)
+    [name, type] = strtok(fields{i}, ':');
+    fieldNames(i) = strtrim(name);
+    switch strtrim(type(2:end))
+        case 'Float64'
+            fieldSizes(i) = 8;
+            fieldEncoding(i) = 1;
+            fieldType{i} = 'double';
+        case 'Int8'
+            fieldSizes(i) = 1;
+            fieldEncoding(i) = 1;
+            fieldType{i} = 'int8';
+        case 'Uint8'
+            fieldSizes(i) = 1;
+            fieldEncoding(i) = 1;
+            fieldType{i} = 'uint8';
+        case 'Uint32'
+            fieldSizes(i) = 4;
+            fieldEncoding(i) = -1;
+            fieldType{i} = 'uint32';
+        case 'Int32'
+            fieldSizes(i) = 4;
+            fieldEncoding(i) = -1;
+            fieldType{i} = 'int32';
+        case 'Int16'
+            fieldSizes(i) = 2;
+            fieldEncoding(i) = -1;
+            fieldType{i} = 'int16';
+        case 'Uint16'
+            fieldSizes(i) = 2;
+            fieldEncoding(i) = -1;
+            fieldType{i} = 'uint16';
+        otherwise
+            error('Unsupported field type: %s', type);
+    end
+    offset = offset + fieldSizes(i);
+end
+
+% Ensure FRAMESIZE matches calculated field sizes
+if offset ~= header.FRAMESIZE
+    error('FRAMESIZE in header does not match calculated field sizes.');
+end
+
+% Read the binary data
+fid = fopen(filename, 'rb');
+fseek(fid, header.HEADER_SIZE, 'bof');
+fileData = fread(fid, '*uint8');  % Read as unsigned 8-bit integers
+
+% Ensure file size is a multiple of the entry size
+if mod(numel(fileData), offset) ~= 0
+    error('Corrupted file: File size is not a multiple of the entry size.');
+end
+
+% Calculate the number of entries
+numEntries = numel(fileData) / header.FRAMESIZE;
+
+% Preallocate arrays for efficiency
+logDataStruct = struct();
+for i = 1:length(fieldNames)
+    logDataStruct.(fieldNames{i}) = zeros(numEntries, 1);
+end
+
+% Parse the binary data
+if options.Verbose
+    fprintf(1,'Parsing %s-type server binary log...000%%\n', header.FILETYPE);
+end
+for i = 1:numEntries
+    offset = (i - 1) * header.FRAMESIZE;
+
+    for j = 1:length(fieldNames)
+        fieldSize = fieldSizes(j);
+        if fieldEncoding(j) > 0
+            byteOrder = 1:fieldSize;
+        else
+            byteOrder = fieldSize:-1:1;
+        end
+        dataBytes = fileData(offset + byteOrder);
+        value = typecast(dataBytes, fieldType{j});
+        logDataStruct.(fieldNames{j})(i) = value;
+        offset = offset + fieldSize;
+    end
+    if options.Verbose
+        fprintf(1,'\b\b\b\b\b%03d%%\n', round(100*i/numEntries));
+    end
+end
+
+if isfield(logDataStruct,'Timestamp')
+    logDataStruct.Timestamp = datetime(logDataStruct.Timestamp ./ 1000, 'ConvertFrom', 'posixtime', 'TimeZone', 'UTC');
+    logDataStruct.Timestamp.TimeZone = 'America/New_York';
+    logDataStruct.Timestamp.Format = 'dd-MMM-uuuu HH:mm:ss.SSSSSS';
+end
+
+% Convert to MATLAB table
+logData = struct2table(logDataStruct);
+logData = table2timetable(logData);
+
+switch header.FILETYPE
+    case 'reactions'
+        if ~isfield(header,'LOG_VERSION')
+            header.LOG_VERSION = 0;
+        end
+        [trialData, logData] = parseReactionLogs(logData, header.LOG_VERSION);
+        if isempty(trialData)
+            if options.Verbose
+                warning("No +enum package detected on current PATH. No trialized log data available.\n");
+            end
+        else
+            if options.AutoPlot
+                fig = figure('Color','w','Name','Auto-Plot of Reactions Trials', ...
+                    'WindowState','maximized');
+                ax = axes(fig,'NextPlot','add','FontName','Tahoma');
+                yyaxis(ax,'left');
+                set(ax,'NextPlot','add','FontName','Tahoma',...
+                    'ColorOrder', [0 0 0], ...
+                    'YColor','k',...
+                    'YTick',[4 5],...
+                    'YTickLabel',["DE-ASSERTED", "ASSERTED"], ...
+                    'YLim',[-3.5, 5.5]);
+                plot(ax, logData.Timestamp, logData.AssertionState+4);
+                yyaxis(ax,'right');
+                set(ax,...
+                    'NextPlot','add','FontName','Tahoma',...
+                    'YColor',[0.65 0.65 0.65],...
+                    'ColorOrder', [0.65 0.65 0.65], ...
+                    'YTick',-3:4,...
+                    'YTickLabel', strrep(string(enum.BasicReactionState(-3:4)),'_','\_'), ...
+                    'YLim',[-3.5, 5.5]);
+                plot(ax, logData.Timestamp, logData.TaskState);
+                title(ax, header.TASK, strrep(header.SESSION,'_','\_'), ...
+                    'FontName','Tahoma');
+            end
+        end
+    case 'survivor'
+        trialData = [];
+        if options.Verbose
+            fprintf(1,'No trialized-handling set up for survivor-type binary server logs (yet?)\n');
+        end
+    otherwise
+        fprintf(1,'No additional processing considered for fileType: "%s"\n', header.FILETYPE);
+end
+logData.Properties.UserData = header;
+
 
 fclose(fid);
 
-    function [trialData, logData] = parseReactionLogs(logData)
+    function [trialData, logData] = parseReactionLogs(logData, logVersion)
         %PARSEREACTIONLOGS Convert log timestamped events into trialized rows.
         %
         % Syntax:
-        %   [trialData, logData] = parseReactionLogs(logData);
+        %   [trialData, logData] = parseReactionLogs(logData, logVersion);
         %
         % Description:
         %   This function processes a table of log data with timestamped events and converts it into a trial-based
@@ -275,6 +279,7 @@ fclose(fid);
         %   logData - A table containing log data with the following expected columns:
         %             - `Timestamp`: Timestamps of each event (datetime).
         %             - `TaskState`: Task state at each timestamp (integer or categorical).
+        %   logVersion - Version of the logs
         %
         % Outputs:
         %   trialData - A table containing trialized data with the following columns:
@@ -318,6 +323,11 @@ fclose(fid);
             return;
         end
         logData.TaskState = enum.BasicReactionState(logData.TaskState);
+        if logVersion > 4
+            logData.AckState = enum.BasicReactionState(logData.AckState);
+        elseif logVersion > 3
+            logData.AckState = enum.BasicReactionState(logData.AckState-2); % oops
+        end
 
         iTrial = [];
         iReady = [];
@@ -386,6 +396,8 @@ fclose(fid);
                 else
                     continue;
                 end
+            else
+                break;
             end
 
             iNext = findNextStateOnset(iNext,logData.TaskState,enum.BasicReactionState.TIMEOUT);
@@ -400,42 +412,10 @@ fclose(fid);
                 end
             end
         end
-        if ~isempty(logData)
-            t_deassert(end) = logData.Timestamp(end);
-            tau_deassert(end) = seconds(t_deassert(end) - t_deassert_hat(end));
-            tau_hold(end) = seconds(t_deassert(end) - t_assert(end));
-            trial_outcome(end) = true;
-            
-            tmp = nan;
-            for ii = numel(tau_hold_hat):-1:1
-                if isnan(tau_hold_hat(ii))
-                    tau_hold_hat(ii) = tmp;
-                else
-                    tmp = tau_hold_hat(ii);
-                end
-            end
-            % Since we always re-use the hold times in the event of an
-            % unsuccessful trial, we can simply "fill" using the latest
-            % value since the value only changes and is non-NaN on
-            % successful trials. 
-        end
-        n_row = min([numel(trial_counter),numel(t_trial),numel(t_ready),numel(t_pre),numel(t_assert_hat),numel(t_assert),numel(t_deassert_hat),numel(t_deassert),numel(t_total),numel(tau_hold),numel(tau_hold_hat),numel(tau_deassert),numel(trial_outcome)]);
-        inc = (1:n_row)';
-        trial_counter = trial_counter(inc);
-        t_trial = t_trial(inc);
-        t_ready = t_ready(inc);
-        t_pre = t_pre(inc);
-        t_assert_hat = t_assert_hat(inc);
-        t_assert = t_assert(inc);
-        t_deassert = t_deassert(inc);
-        t_deassert_hat = t_deassert_hat(inc);
-        t_total = t_total(inc);
-        tau_hold = tau_hold(inc);
-        tau_hold_hat = tau_hold_hat(inc);
-        tau_assert = tau_assert(inc);
-        tau_deassert = tau_deassert(inc);
-        trial_outcome = trial_outcome(inc);
-        trialData = table(trial_counter, t_trial, t_ready, t_pre, t_assert_hat, t_assert, t_deassert_hat, t_deassert, t_total, tau_hold, tau_hold_hat, tau_assert, tau_deassert, trial_outcome);
+        n = min([numel(trial_counter), numel(t_trial), numel(t_ready), numel(t_pre), numel(t_assert_hat), numel(t_assert), numel(t_deassert_hat), numel(t_deassert), numel(t_total), numel(tau_hold), numel(tau_hold_hat), numel(tau_assert), numel(tau_deassert), numel(trial_outcome)]);
+        trialData = table(trial_counter(1:n), t_trial(1:n), t_ready(1:n), t_pre(1:n), t_assert_hat(1:n), t_assert(1:n), t_deassert_hat(1:n), t_deassert(1:n), t_total(1:n), tau_hold(1:n), tau_hold_hat(1:n), tau_assert(1:n), tau_deassert(1:n), trial_outcome(1:n), ...
+            'VariableNames', {'trial_counter', 't_trial', 't_ready', 't_pre', 't_assert_hat', 't_assert', 't_deassert_hat', 't_deassert', 't_total', 'tau_hold', 'tau_hold_hat', 'tau_assert', 'tau_deassert', 'trial_outcome'});
+
         function iStart = findNextStateOnset(iBeginSearch,taskState,targetState)
             iSearch = iBeginSearch;
             if isempty(iSearch) || isempty(taskState)

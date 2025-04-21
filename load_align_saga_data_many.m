@@ -78,6 +78,8 @@ arguments
     options.TabletFile {mustBeTextScalar} = "SUBJ_YYYY_MM_DD_TABLET_BLOCK.bin";
     options.InputRoot = "";
     options.UseFirstSampleIfNoSyncPulse (1,1) logical = false;
+    options.UsePulseSync (1,1) logical = true;
+    options.MaxSyncPulseWidth (1,1) double = 0.6; % Seconds
     options.ManualSyncIndex = [];
 end
 data = struct('samples',[],'channels',[],'sample_rate',options.SampleRate);
@@ -86,7 +88,11 @@ m = size(poly5_files,2);
 raw = cell(n,m);
 for ik = 1:m
     for ii = 1:n % Loads all files
-        raw{ii,ik} = TMSiSAGA.Poly5.read(fullfile(options.InputRoot,poly5_files(ii,ik)));
+        if strlength(options.InputRoot) == 0
+            raw{ii,ik} = TMSiSAGA.Poly5.read(char(poly5_files{ii,ik}));
+        else
+            raw{ii,ik} = TMSiSAGA.Poly5.read(fullfile(options.InputRoot,poly5_files(ii,ik)));
+        end
     end
 end
 
@@ -370,17 +376,53 @@ for ik = 1:m
         % all_samples{ii,ik} = samples(:,iStart(ii,ik):end);
         all_samples{ii,ik} = samples;
     end
-    sync_target = bitand(all_samples{1,ik}(iTrig{1},:),trigBitMask(1))==0;
-
-    for ii = 1:n
-        [rho,lags] = xcorr(sync_target, bitand(all_samples{ii,ik}(iTrig{ii},:),trigBitMask(ii))==0);
-        [~,imax] = max(rho);
-        if lags(imax) < 0
-            % all_samples{1,ik} = [zeros(size(all_samples{1,ik},1),-lags(imax)),all_samples{1,ik}];
-            sync_target = bitand(all_samples{ii,ik}(iTrig{ii},:),trigBitMask(ii))==0;
-            ii = 1; %#ok<FXSET,NASGU>
+    
+    if options.UsePulseSync
+        for ii = 1:n
+            if options.InvertLogic
+                sync_target = bitand(all_samples{ii,ik}(iTrig{ii},:),trigBitMask(ii))==0;
+            else
+                sync_target = bitand(all_samples{ii,ik}(iTrig{ii},:),trigBitMask(ii))==trigBitMask(ii);
+            end
+            iRise = strfind(sync_target,[0 1]);
+            iFall = strfind(sync_target,[1 0]);
+            deltaRise = nan(1,numel(iRise));
+            for ir = 1:numel(iRise)
+                tmp = find(iFall > iRise(ir),1,'first');
+                if ~isempty(tmp)
+                    deltaRise(ir) = iFall(tmp)-iRise(ir);
+                end
+            end
+            iRise(isnan(deltaRise)) = [];
+            deltaRise(isnan(deltaRise)) = [];
+            deltaRise = deltaRise ./ options.SampleRate;
+            iGood = find(deltaRise < options.MaxSyncPulseWidth,1,'first');
+            if isempty(iGood)
+                error("No sync pulses < %f sec.", options.MaxSyncPulseWidth);
+            end
+            all_samples{ii,ik} = all_samples{ii,ik}(:,iRise(iGood):end);
+        end
+    else
+        if options.InvertLogic
+            sync_target = bitand(all_samples{1,ik}(iTrig{1},:),trigBitMask(1))==0;
         else
-            all_samples{ii,ik} = [zeros(size(all_samples{ii,ik},1),lags(imax)),all_samples{ii,ik}];
+            sync_target = bitand(all_samples{1,ik}(iTrig{1},:),trigBitMask(1))==trigBitMask(1);
+        end
+        for ii = 1:n
+            if options.InvertLogic
+                sync_match = bitand(all_samples{ii,ik}(iTrig{ii},:),trigBitMask(ii))==0;
+            else
+                sync_match = bitand(all_samples{ii,ik}(iTrig{ii},:),trigBitMask(ii))==trigBitMask(ii);
+            end
+            [rho,lags] = xcorr(sync_target, sync_match);
+            [~,imax] = max(rho);
+            if lags(imax) < 0
+                % all_samples{1,ik} = [zeros(size(all_samples{1,ik},1),-lags(imax)),all_samples{1,ik}];
+                sync_target = sync_match;
+                ii = 1; %#ok<FXSET,NASGU>
+            else
+                all_samples{ii,ik} = [zeros(size(all_samples{ii,ik},1),lags(imax)),all_samples{ii,ik}];
+            end
         end
     end
     for ii = 1:n
