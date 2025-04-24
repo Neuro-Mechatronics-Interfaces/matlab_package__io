@@ -192,7 +192,18 @@ end
 
 % Ensure FRAMESIZE matches calculated field sizes
 if offset ~= header.FRAMESIZE
-    error('FRAMESIZE in header does not match calculated field sizes.');
+    if header.LOG_VERSION == 3
+        if options.Verbose
+            warning('FRAMESIZE in header does not match calculated field sizes.');
+        end
+        offset = header.FRAMESIZE;
+        fieldNames(4) = [];
+        fieldSizes(4) = [];
+        fieldEncoding(4) = [];
+        fieldType(4) = [];
+    else
+        error('FRAMESIZE in header does not match calculated field sizes.');
+    end
 end
 
 % Read the binary data
@@ -450,6 +461,10 @@ fclose(fid);
             end
         end
         n = min([numel(trial_counter), numel(t_trial), numel(t_ready), numel(t_pre), numel(t_assert_hat), numel(t_assert), numel(t_deassert_hat), numel(t_deassert), numel(t_total), numel(tau_hold), numel(tau_hold_hat), numel(tau_assert), numel(tau_deassert), numel(trial_outcome)]);
+        if n == 0
+            trialData = [];
+            return;
+        end
         trialData = table(trial_counter(1:n), t_trial(1:n), t_ready(1:n), t_pre(1:n), t_assert_hat(1:n), t_assert(1:n), t_deassert_hat(1:n), t_deassert(1:n), t_total(1:n), tau_hold(1:n), tau_hold_hat(1:n), tau_assert(1:n), tau_deassert(1:n), trial_outcome(1:n), ...
             'VariableNames', {'trial_counter', 't_trial', 't_ready', 't_pre', 't_assert_hat', 't_assert', 't_deassert_hat', 't_deassert', 't_total', 'tau_hold', 'tau_hold_hat', 'tau_assert', 'tau_deassert', 'trial_outcome'});
 
