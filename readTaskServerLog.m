@@ -59,9 +59,10 @@ function [logData, trialData] = readTaskServerLog(filename, options)
 arguments
     filename
     options.AutoPlot (1,1) logical = false;
+    options.DefaultHeader {mustBeTextScalar} = '{"LOG_VERSION":3,"HEADER_SIZE":0,"TASK":"Basic Reaction","SESSION":"default_2025_03_28_log","FILETYPE":"reactions","FRAMESIZE":14,"FIELDS":"Timestamp:Float64,AssertionState:Int8,TaskState:Int8,FrameIndex:Uint32"}';
     options.Verbose (1,1) logical = true;
 end
-
+defHeader = jsondecode(options.DefaultHeader);
 % Open the file for reading in binary mode
 fid = fopen(filename, 'rb');
 if fid == -1
@@ -74,9 +75,12 @@ headerText = '';
 while true
     line = fgetl(fid);
     if line==-1  % We reached the end of the file somehow
+        headerEnd = ftell(fid);
+        fclose(fid);
         break;
     end
     if ~ismember(line, '=')
+        headerEnd = ftell(fid);
         fclose(fid);
         break;
     end
@@ -93,10 +97,24 @@ for i = 1:numel(headerLines)
         dataStart = dataStart + 1;
         key = strtrim(upper(keyValue{1}));
         value = strtrim(keyValue{2});
+        if options.Verbose
+            fprintf(1,'[HEADER]\t"%s": %s\n',key,value);
+        end
+        if strcmpi(key(1),'™') % Then something bad happened and there's no header probably.
+            header = defHeader;
+            break;
+        end
         if isnumeric(str2double(value)) && ~isnan(str2double(value))
             header.(key) = str2double(value);  % Convert numeric values
         else
             header.(key) = value;  % Keep strings as is
+        end
+        if strcmpi(key,'FIELDS')
+            if isfield(header,'FILETYPE')
+                if strcmpi(header.FILETYPE,'reactions')
+                    break;
+                end
+            end
         end
     end
 end
@@ -105,7 +123,22 @@ requiredFields = {'LOG_VERSION', 'HEADER_SIZE', 'TASK', 'SESSION', 'FILETYPE', '
 for i = 1:length(requiredFields)
     if ~isfield(header, requiredFields{i})
         if strcmpi(requiredFields{i},'LOG_VERSION')
-            warning("Missing required header: LOG_VERSION. Using Default value of 0.");
+            if options.Verbose
+                warning("Missing required header: LOG_VERSION. Using Default value of 0.");
+            end
+            header.LOG_VERSION = 0;
+        elseif (strcmpi(requiredFields{i}, 'HEADER_SIZE')) && (header.LOG_VERSION==0)
+            if options.Verbose
+                warning("Missing required header: HEADER_SIZE, but LOG_VERSION==0; set HEADER_SIZE to 0 and proceeding.");
+            end
+            header.HEADER_SIZE = 0;
+        elseif (strcmpi(requiredFields{i}, 'TASK')) && endsWith(filename,'reactions')
+            [~,f,~] = fileparts(filename);
+            header.TASK = "Basic Reaction";
+            header.FILETYPE = "reactions";
+            header.SESSION = f;
+            header.FRAMESIZE = 14;
+            header.FIELDS = "Timestamp:Float64,AssertionState:Int8,TaskState:Int8,FrameIndex:Uint32";
         else
             error('Missing required header field: %s', requiredFields{i});
         end
@@ -164,7 +197,11 @@ end
 
 % Read the binary data
 fid = fopen(filename, 'rb');
-fseek(fid, header.HEADER_SIZE, 'bof');
+if header.LOG_VERSION==0
+    fseek(fid, headerEnd, 'bof');
+else
+    fseek(fid, header.HEADER_SIZE, 'bof');
+end
 fileData = fread(fid, '*uint8');  % Read as unsigned 8-bit integers
 
 % Ensure file size is a multiple of the entry size
