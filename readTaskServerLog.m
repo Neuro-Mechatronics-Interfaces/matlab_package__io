@@ -442,6 +442,7 @@ fclose(fid);
                     t_deassert_hat(ii) = logData.Timestamp(iNext);
                     tau_hold_hat(ii) = seconds(t_deassert_hat(ii) - t_assert_hat(ii));
                 else
+                    tau_hold(ii) = seconds(t_total(ii) - t_assert(ii));
                     continue;
                 end
             else
