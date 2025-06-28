@@ -363,7 +363,7 @@ fclose(fid);
         %   disp(trialData);
         %
         % See also: table2timetable, enum.BasicReactionState
-        
+
         trialData = [];
         testEnum = what('enum');
         if isempty(testEnum)
@@ -404,6 +404,8 @@ fclose(fid);
         tau_deassert = nan(size(t_trial));
         trial_outcome = false(size(t_trial));
         trial_counter = (1:numel(trial_outcome))';
+        assertion_rising = strfind(logData.AssertionState',[0 1])+1;
+        assertion_falling = strfind(logData.AssertionState',[1 0])+1;
         for ii = 1:numel(t_trial)
             if ii == numel(t_trial)
                 t_total(ii) = logData.Timestamp(end);
@@ -415,6 +417,11 @@ fclose(fid);
                 if logData.Timestamp(iNext) < t_total(ii)
                     t_pre(ii) = logData.Timestamp(iNext);
                 else
+                    iAssert = find(logData.Timestamp(assertion_rising) > t_trial(ii),1,'first');
+                    t_assert(ii) = logData.Timestamp(assertion_rising(iAssert));
+                    iDeassert = find(logData.Timestamp(assertion_falling) > t_assert(ii), 1, 'first');
+                    t_deassert(ii) = logData.Timestamp(assertion_falling(iDeassert));
+                    tau_hold(ii) = seconds(t_deassert(ii) - t_assert(ii));
                     continue;
                 end
             end
@@ -442,7 +449,9 @@ fclose(fid);
                     t_deassert_hat(ii) = logData.Timestamp(iNext);
                     tau_hold_hat(ii) = seconds(t_deassert_hat(ii) - t_assert_hat(ii));
                 else
-                    tau_hold(ii) = seconds(t_total(ii) - t_assert(ii));
+                    iDeassert = find(logData.Timestamp(assertion_falling) > t_assert(ii), 1, 'first');
+                    t_deassert(ii) = logData.Timestamp(assertion_falling(iDeassert));
+                    tau_hold(ii) = seconds(t_deassert(ii) - t_assert(ii));
                     continue;
                 end
             else
@@ -466,8 +475,21 @@ fclose(fid);
             trialData = [];
             return;
         end
+        t_deassert(n) = t_total(n);
+        tau_hold(n) = seconds(t_deassert(n) - t_assert(n));
+        tau_deassert(n) = seconds(t_deassert(n) - t_deassert_hat(n));
+        trial_outcome(n) = true;
+        cur_hold = tau_hold_hat(end);
+        for ii = n:-1:1
+            if isnan(tau_hold_hat(ii))
+                tau_hold_hat(ii) = cur_hold;
+            else
+                cur_hold = tau_hold_hat(ii);
+            end
+        end
         trialData = table(trial_counter(1:n), t_trial(1:n), t_ready(1:n), t_pre(1:n), t_assert_hat(1:n), t_assert(1:n), t_deassert_hat(1:n), t_deassert(1:n), t_total(1:n), tau_hold(1:n), tau_hold_hat(1:n), tau_assert(1:n), tau_deassert(1:n), trial_outcome(1:n), ...
             'VariableNames', {'trial_counter', 't_trial', 't_ready', 't_pre', 't_assert_hat', 't_assert', 't_deassert_hat', 't_deassert', 't_total', 'tau_hold', 'tau_hold_hat', 'tau_assert', 'tau_deassert', 'trial_outcome'});
+        trialData = fix_final_success_trials(trialData);
 
         function iStart = findNextStateOnset(iBeginSearch,taskState,targetState)
             iSearch = iBeginSearch;
@@ -483,6 +505,18 @@ fclose(fid);
             else
                 iStart = iSearch;
             end
+        end
+
+        function E = fix_final_success_trials(E)
+
+            mask = isnan(E.tau_deassert) & ~isnat(E.t_deassert_hat);
+            E.t_deassert(mask) = E.t_total(mask);
+            E.tau_deassert(mask) = seconds(E.t_deassert(mask) - E.t_deassert_hat(mask));
+            E.tau_hold(mask) = seconds(E.t_deassert(mask) - E.t_assert(mask));
+            E.trial_outcome(mask) = true;
+            E.tau_mean = (E.tau_assert + E.tau_deassert)/2;
+            E.tau_total = seconds(E.t_total - E.t_trial);
+            E = movevars(E,["tau_mean","tau_total"], 'After', 'tau_deassert');
         end
 
     end
