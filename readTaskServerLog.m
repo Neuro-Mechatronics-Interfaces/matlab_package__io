@@ -79,7 +79,7 @@ while true
         fclose(fid);
         break;
     end
-    if ~ismember(line, '=')
+    if ~contains(line, '=')
         headerEnd = ftell(fid);
         fclose(fid);
         break;
@@ -120,6 +120,7 @@ for i = 1:numel(headerLines)
 end
 % Validate required header fields
 requiredFields = {'LOG_VERSION', 'HEADER_SIZE', 'TASK', 'SESSION', 'FILETYPE', 'FRAMESIZE', 'FIELDS'};
+disp(header);
 for i = 1:length(requiredFields)
     if ~isfield(header, requiredFields{i})
         if strcmpi(requiredFields{i},'LOG_VERSION')
@@ -151,44 +152,64 @@ fieldSizes = zeros(length(fields),1);
 fieldNames = strings(length(fields),1);
 fieldEncoding = zeros(length(fields),1);
 fieldType = cell(length(fields),1);
+addMeta = struct;
 offset = 0;
 for i = 1:length(fields)
     [name, type] = strtok(fields{i}, ':');
-    fieldNames(i) = strtrim(name);
+    curName = strtrim(name);
     switch strtrim(type(2:end))
         case 'Float64'
             fieldSizes(i) = 8;
             fieldEncoding(i) = 1;
             fieldType{i} = 'double';
+            fieldNames(i) = curName;
+        case 'Float32'
+            fieldSizes(i) = 4;
+            fieldEncoding(i) = 1;
+            fieldType{i} = 'single';
+            fieldNames(i) = curName;
         case 'Int8'
             fieldSizes(i) = 1;
             fieldEncoding(i) = 1;
             fieldType{i} = 'int8';
+            fieldNames(i) = curName;
         case 'Uint8'
             fieldSizes(i) = 1;
             fieldEncoding(i) = 1;
             fieldType{i} = 'uint8';
+            fieldNames(i) = curName;
         case 'Uint32'
             fieldSizes(i) = 4;
             fieldEncoding(i) = -1;
             fieldType{i} = 'uint32';
+            fieldNames(i) = curName;
         case 'Int32'
             fieldSizes(i) = 4;
             fieldEncoding(i) = -1;
             fieldType{i} = 'int32';
+            fieldNames(i) = curName;
         case 'Int16'
             fieldSizes(i) = 2;
             fieldEncoding(i) = -1;
+
             fieldType{i} = 'int16';
+            fieldNames(i) = curName;
         case 'Uint16'
             fieldSizes(i) = 2;
             fieldEncoding(i) = -1;
             fieldType{i} = 'uint16';
+            fieldNames(i) = curName;
         otherwise
-            error('Unsupported field type: %s', type);
+            addMeta.(curName) = strtrim(type(2:end));
+            % error('Unsupported field type: %s', type);
     end
     offset = offset + fieldSizes(i);
 end
+fmask = fieldSizes == 0;
+fieldNames(fmask) = [];
+fieldSizes(fmask) = [];
+fieldEncoding(fmask) = [];
+fieldType(fmask) = [];
 
 % Ensure FRAMESIZE matches calculated field sizes
 if offset ~= header.FRAMESIZE
@@ -238,6 +259,7 @@ for i = 1:numEntries
 
     for j = 1:length(fieldNames)
         fieldSize = fieldSizes(j);
+
         if fieldEncoding(j) > 0
             byteOrder = 1:fieldSize;
         else
@@ -262,13 +284,15 @@ end
 % Convert to MATLAB table
 logData = struct2table(logDataStruct);
 logData = table2timetable(logData);
+logData.Properties.UserData = addMeta;
 
 switch header.FILETYPE
     case 'reactions'
         if ~isfield(header,'LOG_VERSION')
             header.LOG_VERSION = 0;
         end
-        [trialData, logData] = parseReactionLogs(logData, header.LOG_VERSION);
+
+        [trialData, logData] = parseReactionLogsByTask(logData, header);
         if isempty(trialData)
             if options.Verbose
                 warning("No +enum package detected on current PATH. No trialized log data available.\n");
@@ -299,24 +323,488 @@ switch header.FILETYPE
                     'FontName','Tahoma');
             end
         end
+        logData.Properties.UserData = header;
     case 'survivor'
         trialData = [];
         if options.Verbose
             fprintf(1,'No trialized-handling set up for survivor-type binary server logs (yet?)\n');
         end
+        logData.Properties.UserData = header;
+    case 'typing'
+        % ---------------------------------------------------
+        % Typing task binary log — parsed frame-by-frame
+        % No trialization yet; return per-keystroke records
+        % ---------------------------------------------------
+        if options.Verbose
+            fprintf('[Typing] Parsed %d frames.\n', height(logData));
+        end
+
+        % WordChar fields
+        wordCharMask = startsWith(fieldNames, "WordChar");
+
+        if any(wordCharMask)
+            wcNames = fieldNames(wordCharMask);
+            nChars = numel(wcNames);
+            nRows  = height(logData);
+
+            % Extract matrix
+            wordMatrix = zeros(nRows, nChars, 'uint8');
+            for k = 1:nChars
+                wordMatrix(:, k) = logData.(wcNames{k});
+            end
+
+            % Decode each row into a word
+            wordCell = cell(nRows,1);
+
+            for i = 1:nRows
+                codes = wordMatrix(i,:);
+
+                % Valid: 0–25 are letters; 26 is space; 255 means unused
+                valid = codes ~= 255;
+
+                codes = codes(valid);
+
+                letters = repmat(' ', 1, numel(codes));  % allocate
+
+                for j = 1:numel(codes)
+                    c = codes(j);
+                    if c <= 25
+                        letters(j) = char(c + 65);   % 'A'..'Z'
+                    elseif c == 26
+                        letters(j) = ' ';            % space
+                    else
+                        letters(j) = '';             % unexpected
+                    end
+                end
+
+                wordCell{i} = letters;
+            end
+
+            logData.Word = wordCell;
+            logData(:,wcNames) = [];
+        end
+
+
+        % Add a "WordComplete" flag from IsWordEnd
+        if isfield(logData, "IsWordEnd")
+            logData.WordComplete = logical(logData.IsWordEnd);
+        else
+            logData.WordComplete = false(height(logData),1);
+        end
+
+        stimCodes = logData.Stimulus;
+        respCodes = logData.Response;
+        logData.Stimulus = char(stimCodes + 65);
+        logData.Stimulus(stimCodes==26) = repmat(' ',nnz(stimCodes==26),1);
+        logData.Response = char(respCodes + 65);
+        logData.Response(respCodes==26) = repmat(' ',nnz(respCodes==26),1);
+
+        % Version-specific cleanup
+        logVersion = header.LOG_VERSION;
+
+        if logVersion < 3
+            % Remove all frame logs (RT == -1)
+            logData.WordComplete = stimCodes==26;
+            if any(strcmp("RTms", fieldNames))
+                badRows = logData.RTms == -1;
+                goodRows = find(~badRows);
+                logData.Word(goodRows) = logData.Word(goodRows-1);
+                logData(badRows, :) = [];
+            end
+        else
+            logData.WordComplete = logData.IsWordEnd;
+        end
+        logData.IsWordEnd = [];
+
+        % TrialData not implemented yet (you may add word-level trialization later)
+        trialData = [];
+
+        % Save header metadata
+        logData.Properties.UserData = header;
+        logData.Properties.UserData.TotalWords = nnz(logData.WordComplete);
+        logData.Properties.UserData.WPM = logData.Properties.UserData.TotalWords / minutes(logData.Timestamp(end)-logData.Timestamp(1));
+        if options.Verbose
+            fprintf('[Typing] Added decoded word strings and WordComplete flags.\n');
+        end
+
+    case 'fitts'
+        % ---------------------------------------------------
+        % Fitts task binary log — frame-by-frame decoded with no
+        % additional "trialization" (beyond DB summary tables)
+        % ---------------------------------------------------
+        if options.Verbose
+            fprintf('[Fitts] Parsed %d frames (%.2f seconds).\n', ...
+                height(logData), ...
+                seconds(logData.Timestamp(end) - logData.Timestamp(1)));
+        end
+
+        % Add useful derived columns
+        logData.dx = logData.CursorX - logData.TargetX;
+        logData.dy = logData.CursorY - logData.TargetY;
+
+        logData.r = sqrt(logData.dx.^2 + logData.dy.^2);
+
+        logData.Properties.UserData = header;
+        logData.TrialState = enum.FittsTaskState(logData.TrialState);
+        logData.Properties.UserData = header;
+        trialData = parseFittsLogToTrials(logData);
     otherwise
+        logData.Properties.UserData = header;
         fprintf(1,'No additional processing considered for fileType: "%s"\n', header.FILETYPE);
 end
-logData.Properties.UserData = header;
 
 
 fclose(fid);
 
-    function [trialData, logData] = parseReactionLogs(logData, logVersion)
-        %PARSEREACTIONLOGS Convert log timestamped events into trialized rows.
+    function [trialData, logData] = parseReactionLogsByTask(logData, header)
+
+        task = string(header.TASK);
+        switch task
+            case "Even More Basic Reaction"
+                [trialData, logData] = parseEvenMoreBasicReaction(logData, header.LOG_VERSION);
+            case "Even More Basic Reaction 2Choice"
+                [trialData, logData] = parseEvenMoreBasicReaction2Choice(logData, header.LOG_VERSION);
+            case "Basic Reaction"
+                [trialData, logData] = parseBasicReaction(logData, header.LOG_VERSION);
+            case "Basic Reaction 2Choice"
+                [trialData, logData] = parseBasicReaction2Choice(logData, header.LOG_VERSION);
+            otherwise
+                error("Unexpected value for header.TASK: %s", task);
+        end
+    end
+
+    function [trialData, logData] = parseEvenMoreBasicReaction(logData, logVersion)
+
+        testEnum = what('enum');
+        if isempty(testEnum)
+            trialData = [];
+            return;
+        end
+
+        logData.TaskState = enum.EvenMoreBasicReactionState(logData.TaskState);
+
+        if ismember("AckState", logData.Properties.VariableNames)
+            logData.AckState = enum.EvenMoreBasicReactionState(logData.AckState);
+        end
+
+        % ---- Detect trials by READY onset ----
+        isReady = logData.TaskState == enum.EvenMoreBasicReactionState.READY;
+        iReady = find(diff([false; isReady]) == 1);
+
+        nTrials = numel(iReady);
+        if nTrials == 0
+            trialData = [];
+            return;
+        end
+
+        % Preallocate
+        t_trial  = logData.Timestamp(iReady);
+        t_cue    = NaT(nTrials,1,'TimeZone',logData.Timestamp.TimeZone);
+        t_assert = NaT(nTrials,1,'TimeZone',logData.Timestamp.TimeZone);
+        outcome  = false(nTrials,1);
+
+        assertion_rising = strfind(logData.AssertionState',[0 1]) + 1;
+
+        for ik = 1:nTrials
+            idxStart = iReady(ik);
+            if ik < nTrials
+                idxEnd = iReady(ik+1)-1;
+            else
+                idxEnd = height(logData);
+            end
+
+            seg = logData(idxStart:idxEnd,:);
+
+            % ---- Cue time ----
+            idxCue = find(seg.TaskState == enum.EvenMoreBasicReactionState.CUE,1);
+            if ~isempty(idxCue)
+                t_cue(ik) = seg.Timestamp(idxCue);
+            end
+
+            % ---- Assertion ----
+            idxAssert = assertion_rising(assertion_rising > idxStart & assertion_rising <= idxEnd);
+            if ~isempty(idxAssert)
+                t_assert(ik) = logData.Timestamp(idxAssert(1));
+                outcome(ik) = true;
+            end
+        end
+
+        tau_react = seconds(t_assert - t_cue);
+
+        trialData = table( ...
+            (1:nTrials)', ...
+            t_trial, ...
+            t_cue, ...
+            t_assert, ...
+            tau_react, ...
+            outcome, ...
+            'VariableNames', { ...
+            'trial_counter', ...
+            't_trial', ...
+            't_cue', ...
+            't_assert', ...
+            'tau_reaction', ...
+            'success' ...
+            });
+        % ---- Error classification ---------------------------------------------
+        hasCue    = ~isnat(trialData.t_cue);
+        hasAssert = ~isnat(trialData.t_assert);
+        
+        trialData.type_I_error  = hasAssert & ~hasCue;
+        trialData.type_II_error = hasCue & ~hasAssert;
+        
+        % Optional: enforce mutual exclusivity
+        trialData.type_I_error  = logical(trialData.type_I_error);
+        trialData.type_II_error = logical(trialData.type_II_error);
+
+
+    end
+
+    function [trialData, logData] = parseEvenMoreBasicReaction2Choice(logData, logVersion)
+    
+        testEnum = what('enum');
+        if isempty(testEnum)
+            trialData = [];
+            return;
+        end
+    
+        % Enumerate task state
+        logData.TaskState = enum.EvenMoreBasicReactionState(logData.TaskState);
+    
+        % AckState stores intended target (0 or 1)
+        if ismember("AckState", logData.Properties.VariableNames)
+            intendedTargetAll = logData.AckState;
+        else
+            error("AckState missing — required for 2Choice parsing.");
+        end
+    
+        % ---- Detect trials by READY onset ------------------------------------
+        isReady = logData.TaskState == enum.EvenMoreBasicReactionState.READY;
+        iReady  = find(diff([false; isReady]) == 1);
+    
+        nTrials = numel(iReady);
+        if nTrials == 0
+            trialData = [];
+            return;
+        end
+    
+        % ---- Preallocate -----------------------------------------------------
+        t_trial   = logData.Timestamp(iReady);
+        t_cue     = NaT(nTrials,1,'TimeZone',logData.Timestamp.TimeZone);
+        t_resp    = NaT(nTrials,1,'TimeZone',logData.Timestamp.TimeZone);
+    
+        selected_target = nan(nTrials,1);
+        intended_target = nan(nTrials,1);
+    
+        success        = false(nTrials,1);
+        wrong_choice   = false(nTrials,1);
+    
+        % AssertionState: 0 = none, 1 = left, 2 = right
+        hasResponse = logData.AssertionState > 0;
+    
+        for k = 1:nTrials
+    
+            idxStart = iReady(k);
+            if k < nTrials
+                idxEnd = iReady(k+1)-1;
+            else
+                idxEnd = height(logData);
+            end
+    
+            seg = logData(idxStart:idxEnd,:);
+    
+            % Intended target (constant per trial)
+            intended_target(k) = seg.AckState(1);
+    
+            % ---- Cue time ----------------------------------------------------
+            idxCue = find(seg.TaskState == enum.EvenMoreBasicReactionState.CUE, 1);
+            if ~isempty(idxCue)
+                t_cue(k) = seg.Timestamp(idxCue);
+            end
+    
+            % ---- First response (anywhere in trial) --------------------------
+            idxResp = find(hasResponse(idxStart:idxEnd), 1, 'first');
+            if ~isempty(idxResp)
+                t_resp(k) = seg.Timestamp(idxResp);
+                selected_target(k) = seg.AssertionState(idxResp) - 1; % map {1,2}→{0,1}
+            end
+    
+            % ---- Outcome classification -------------------------------------
+            if ~isnat(t_cue(k)) && ~isnat(t_resp(k))
+                % Response after cue
+                if selected_target(k) == intended_target(k)
+                    success(k) = true;
+                else
+                    wrong_choice(k) = true;
+                end
+            end
+        end
+    
+        % ---- Timing ----------------------------------------------------------
+        tau_reaction = seconds(t_resp - t_cue);
+    
+        % ---- Error types -----------------------------------------------------
+        hasCue    = ~isnat(t_cue);
+        hasResp   = ~isnat(t_resp);
+    
+        type_I_error  = hasResp & ~hasCue;    % early click
+        type_II_error = hasCue  & ~hasResp;   % missed response
+    
+        % ---- Assemble table --------------------------------------------------
+        trialData = table( ...
+            (1:nTrials)', ...
+            t_trial, ...
+            t_cue, ...
+            t_resp, ...
+            tau_reaction, ...
+            intended_target, ...
+            selected_target, ...
+            success, ...
+            wrong_choice, ...
+            type_I_error, ...
+            type_II_error, ...
+            'VariableNames', { ...
+                'trial_counter', ...
+                't_trial', ...
+                't_cue', ...
+                't_response', ...
+                'tau_reaction', ...
+                'intended_target', ...
+                'selected_target', ...
+                'success', ...
+                'wrong_choice', ...
+                'type_I_error', ...
+                'type_II_error' ...
+            });
+    
+    end
+
+    function [trialData, logData] = parseBasicReaction2Choice(logData, ~)
+    
+        testEnum = what('enum');
+        if isempty(testEnum)
+            trialData = [];
+            return;
+        end
+    
+        % Enumerate task states
+        logData.TaskState = enum.BasicReactionState(logData.TaskState);
+    
+        % AckState encodes intended target (0 or 1)
+        if ismember("AckState", logData.Properties.VariableNames)
+            intendedAll = logData.AckState;
+        else
+            error("AckState missing — required for BasicReaction2Choice parsing.");
+        end
+    
+        % ---- Detect trials by READY onset -------------------------------------
+        isReady = logData.TaskState == enum.BasicReactionState.READY;
+        iReady  = find(diff([false; isReady]) == 1);
+    
+        nTrials = numel(iReady);
+        if nTrials == 0
+            trialData = [];
+            return;
+        end
+    
+        % ---- Preallocate ------------------------------------------------------
+        t_trial  = logData.Timestamp(iReady);
+        t_cue    = NaT(nTrials,1,'TimeZone',logData.Timestamp.TimeZone);
+        t_resp   = NaT(nTrials,1,'TimeZone',logData.Timestamp.TimeZone);
+    
+        intended_target = nan(nTrials,1);
+        selected_target = nan(nTrials,1);
+    
+        success        = false(nTrials,1);
+        wrong_choice   = false(nTrials,1);
+    
+        % AssertionState: 0 = none, 1 = left, 2 = right
+        hasResponse = logData.AssertionState > 0;
+    
+        % ---- Trial loop -------------------------------------------------------
+        for k = 1:nTrials
+    
+            idxStart = iReady(k);
+            if k < nTrials
+                idxEnd = iReady(k+1) - 1;
+            else
+                idxEnd = height(logData);
+            end
+    
+            seg = logData(idxStart:idxEnd,:);
+    
+            % Intended target is constant per trial
+            intended_target(k) = seg.AckState(1);
+    
+            % ---- Cue time (ASSERT state onset) --------------------------------
+            idxCue = find(seg.TaskState == enum.BasicReactionState.ASSERT, 1);
+            if ~isempty(idxCue)
+                t_cue(k) = seg.Timestamp(idxCue);
+            end
+    
+            % ---- First response anywhere in trial -----------------------------
+            idxResp = find(hasResponse(idxStart:idxEnd), 1, 'first');
+            if ~isempty(idxResp)
+                t_resp(k) = seg.Timestamp(idxResp);
+                selected_target(k) = seg.AssertionState(idxResp) - 1; % {1,2}→{0,1}
+            end
+    
+            % ---- Outcome classification --------------------------------------
+            if ~isnat(t_cue(k)) && ~isnat(t_resp(k))
+                % Response after cue
+                if selected_target(k) == intended_target(k)
+                    success(k) = true;
+                else
+                    wrong_choice(k) = true;
+                end
+            end
+        end
+    
+        % ---- Timing -----------------------------------------------------------
+        tau_reaction = seconds(t_resp - t_cue);
+    
+        % ---- Error types ------------------------------------------------------
+        hasCue  = ~isnat(t_cue);
+        hasResp = ~isnat(t_resp);
+    
+        type_I_error  = hasResp & ~hasCue;   % early click
+        type_II_error = hasCue  & ~hasResp;  % missed response
+    
+        % ---- Assemble table ---------------------------------------------------
+        trialData = table( ...
+            (1:nTrials)', ...
+            t_trial, ...
+            t_cue, ...
+            t_resp, ...
+            tau_reaction, ...
+            intended_target, ...
+            selected_target, ...
+            success, ...
+            wrong_choice, ...
+            type_I_error, ...
+            type_II_error, ...
+            'VariableNames', { ...
+                'trial_counter', ...
+                't_trial', ...
+                't_cue', ...
+                't_response', ...
+                'tau_reaction', ...
+                'intended_target', ...
+                'selected_target', ...
+                'success', ...
+                'wrong_choice', ...
+                'type_I_error', ...
+                'type_II_error' ...
+            });
+    
+    end
+
+
+    function [trialData, logData] = parseBasicReaction(logData, logVersion)
+        %PARSEBASICREACTION Convert log timestamped events into trialized rows.
         %
         % Syntax:
-        %   [trialData, logData] = parseReactionLogs(logData, logVersion);
+        %   [trialData, logData] = parseBasicReaction(logData, logVersion);
         %
         % Description:
         %   This function processes a table of log data with timestamped events and converts it into a trial-based
@@ -521,6 +1009,191 @@ fclose(fid);
 
     end
 
+    function trialTbl = parseFittsLogToTrials(logData)
+        %PARSEFITTSTASKLOG Convert Fitts continuous-frame log into trialized rows.
+        %
+        % Inputs:
+        %   logData : timetable produced by readTaskServerLog() for fileType="fitts"
+        %             with fields:
+        %               Timestamp (datetime)
+        %               TrialIndex (int16/int32)
+        %               TrialState (enum.FittsTaskState)
+        %               CursorX, CursorY, TargetX, TargetY
+        %               IR_Inst, IR_EMA
+        %
+        % Outputs:
+        %   trialTbl : table with one row per trial:
+        %       TrialIndex
+        %       EnterTime
+        %       ExitTime
+        %       TerminalState    (last state in that trial, enum.FittsTaskState)
+        %       ExitState        (last non-ERROR state before first ERROR, or
+        %                         TerminalState if no ERROR, or UNKNOWN)
+        %       Success          (true if any ACQUIRED state)
+        %       MovementOnset
+        %       MovementLatency
+        %       DialInTime
+        %       Bits
+        %       BitsPerSecond
+        %       MeanIR
+        %       NFrames
+
+        if isempty(logData)
+            trialTbl = table();
+            return;
+        end
+
+        % ---- Identify trials by TrialIndex changes --------------------------------
+        TI = logData.TrialIndex;
+        trialBreaks = find([true; diff(TI) ~= 0]);
+        nTrials = numel(trialBreaks);
+
+        trialRows = struct([]);
+
+        % ---- Workspace-normalized velocity for movement onset ----------------------
+        dt = seconds(diff(logData.Timestamp));
+        dt = [dt(1); dt];   % pad leading sample
+        vx = gradient(logData.CursorX) ./ dt;
+        vy = gradient(logData.CursorY) ./ dt;
+        v  = sqrt(vx.^2 + vy.^2);
+
+        % Normalize to [0,1] to make a robust threshold
+        VEL_THRESH = 0.15;   % relative velocity threshold
+        ABS_MIN_VEL = 5;   % px/s absolute threshold to avoid noise
+
+        % ---- Trial Loop -------------------------------------------------------------
+        for k = 1:nTrials
+            idxStart = trialBreaks(k);
+            if k < nTrials
+                idxEnd = trialBreaks(k+1) - 1;
+            else
+                idxEnd = height(logData);
+            end
+
+            seg = logData(idxStart:idxEnd,:);
+
+            % enum.FittsTaskState array
+            states = seg.TrialState;
+
+            % ----- Terminal state (last state recorded) -----------------------------
+            terminalState = states(end);
+
+            % ----- ExitState (last non-ERROR before first ERROR) --------------------
+            % If there is an ERROR, look at the last state *before* ERROR.
+            % If no ERROR, ExitState = TerminalState.
+            % If only ERROR and nothing else, ExitState = UNKNOWN.
+            exitState = terminalState;
+
+            idxError = find(states == enum.FittsTaskState.ERROR, 1, 'first');
+            if ~isempty(idxError)
+                % Look back to last non-ERROR state before this ERROR
+                if idxError > 1
+                    prevIdx = find(states(1:idxError-1) ~= enum.FittsTaskState.ERROR, ...
+                        1, 'last');
+                    if ~isempty(prevIdx)
+                        exitState = states(prevIdx);
+                    else
+                        exitState = enum.FittsTaskState.UNKNOWN;
+                    end
+                else
+                    % ERROR is first state in this trial
+                    exitState = enum.FittsTaskState.UNKNOWN;
+                end
+            end
+
+            % ----- Success flag -----------------------------------------------------
+            success = any(states == enum.FittsTaskState.ACQUIRED);
+
+            %% ----- Movement onset (trial-relative velocity normalization) -----
+            % Compute per-trial velocity
+            dt_seg = seconds(diff(seg.Timestamp));
+            dt_seg = [dt_seg(1); dt_seg];
+
+            vx_seg = gradient(seg.CursorX) ./ dt_seg;
+            vy_seg = gradient(seg.CursorY) ./ dt_seg;
+            v_seg  = sqrt(vx_seg.^2 + vy_seg.^2);
+
+            % Trial-relative normalization (robust to slow/fast trials)
+            v_min = min(v_seg);
+            v_max = max(v_seg);
+            vNorm = (v_seg - v_min) / max(eps, (v_max - v_min));
+
+            % Logical vector marking likely movement
+            isMoving_seg = (vNorm > VEL_THRESH) & (v_seg > ABS_MIN_VEL);
+
+            movementIdx = find(isMoving_seg, 1, 'first');
+
+            if isempty(movementIdx)
+                % ---- Fallback #1: first transition from NOT_STARTED→MOVING_TO_TARGET ----
+                idxTrans = find(states == enum.FittsTaskState.MOVING_TO_TARGET, 1, 'first');
+                if ~isempty(idxTrans)
+                    movementIdx = idxTrans;
+                else
+                    % ---- Fallback #2: cannot determine movement onset ----
+                    movementOnset   = NaT;
+                    movementLatency = NaN;
+                end
+            end
+
+            if ~isempty(movementIdx)
+                movementOnset   = seg.Timestamp(movementIdx);
+                movementLatency = seconds(movementOnset - seg.Timestamp(1));
+            end
+
+
+            % ----- Dial-in time (movement onset → first ACQUIRED) -------------------
+            if success
+                idxAcquire = find(states == enum.FittsTaskState.ACQUIRED, 1, 'first');
+                tAcquire   = seg.Timestamp(idxAcquire);
+                if ~isnat(movementOnset)
+                    dialInTime = seconds(tAcquire - movementOnset);
+                else
+                    dialInTime = NaN;
+                end
+            else
+                dialInTime = NaN;
+            end
+
+            % ----- Throughput metrics ----------------------------------------------
+            % Integrate IR_Inst over the trial duration
+            tRel = seconds(seg.Timestamp - seg.Timestamp(1));
+            bits = trapz(tRel, seg.IR_Inst);
+            dur  = seconds(seg.Timestamp(end) - seg.Timestamp(1));
+            bps  = bits / max(dur, eps);
+
+            meanIR = mean(seg.IR_EMA, 'omitnan');
+
+            % ----- Pack into struct row --------------------------------------------
+            trialRows(k).TrialIndex       = seg.TrialIndex(1);
+            trialRows(k).EnterTime        = seg.Timestamp(1);
+            trialRows(k).ExitTime         = seg.Timestamp(end);
+            trialRows(k).TerminalState    = terminalState;
+            trialRows(k).ExitState        = exitState;
+            trialRows(k).Success          = success;
+
+            trialRows(k).MovementOnset    = movementOnset;
+            trialRows(k).MovementLatency  = movementLatency;
+            trialRows(k).DialInTime       = dialInTime;
+
+            trialRows(k).Bits             = bits;
+            trialRows(k).BitsPerSecond    = bps;
+            trialRows(k).MeanIR           = meanIR;
+
+            trialRows(k).NFrames          = height(seg);
+        end
+
+        % Convert to table
+        trialTbl = struct2table(trialRows);
+
+        % Sometimes if it's the first time the Task is run on loading the
+        % page, initialization is weird and we get this unknown state error
+        % if trialTbl.ExitState(1) == enum.FittsTaskState.UNKNOWN
+        %     trialTbl(1,:) = [];
+        % end
+        trialTbl(1,:) = [];
+        trialTbl.TrialDuration = seconds(trialTbl.ExitTime - trialTbl.EnterTime);
+
+    end
 end
 
 
