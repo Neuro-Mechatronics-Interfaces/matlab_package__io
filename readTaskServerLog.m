@@ -211,6 +211,16 @@ fieldSizes(fmask) = [];
 fieldEncoding(fmask) = [];
 fieldType(fmask) = [];
 
+% Pacman binary logs write Uint32 values in little-endian from JS DataView
+% (setUint32(..., true)). Keep legacy big-endian handling for older tasks.
+if isfield(header, 'FILETYPE')
+    ft = lower(string(header.FILETYPE));
+    if startsWith(ft, "pacman")
+        u32Mask = strcmp(fieldType, 'uint32');
+        fieldEncoding(u32Mask) = 1;
+    end
+end
+
 % Ensure FRAMESIZE matches calculated field sizes
 if offset ~= header.FRAMESIZE
     if header.LOG_VERSION == 3
@@ -448,6 +458,19 @@ switch header.FILETYPE
         logData.TrialState = enum.FittsTaskState(logData.TrialState);
         logData.Properties.UserData = header;
         trialData = parseFittsLogToTrials(logData);
+    case {'pacman1d','pacman2d','pacman'}
+        nFrames = height(logData);
+        if options.Verbose
+            if nFrames > 0
+                fprintf('[Pacman] Parsed %d frames (%.2f seconds).\n', ...
+                    nFrames, ...
+                    seconds(logData.Timestamp(end) - logData.Timestamp(1)));
+            else
+                fprintf('[Pacman] Parsed 0 frames (header-only log).\n');
+            end
+        end
+        trialData = parsePacmanLogToTrials(logData);
+        logData.Properties.UserData = header;
     otherwise
         logData.Properties.UserData = header;
         fprintf(1,'No additional processing considered for fileType: "%s"\n', header.FILETYPE);
@@ -1193,6 +1216,170 @@ fclose(fid);
         trialTbl(1,:) = [];
         trialTbl.TrialDuration = seconds(trialTbl.ExitTime - trialTbl.EnterTime);
 
+    end
+
+    function trialTbl = parsePacmanLogToTrials(logData)
+        %PARSEPACMANLOGTOTRIALS Group Pacman frames into trials by Rep.
+        % Rep == 0 is treated as lead-in; Rep > 0 defines trial rows.
+
+        trialTbl = table();
+        if isempty(logData) || ~ismember("Rep", logData.Properties.VariableNames)
+            return;
+        end
+
+        repAll = double(logData.Rep);
+        validRepMask = isfinite(repAll) & repAll > 0;
+        repVals = unique(repAll(validRepMask), 'stable');
+        if isempty(repVals)
+            return;
+        end
+
+        nTrials = numel(repVals);
+        rows(nTrials,1) = struct();
+
+        hasHits = ismember("Hits", logData.Properties.VariableNames);
+        hasMisses = ismember("Misses", logData.Properties.VariableNames);
+        hasColliderGain = ismember("ColliderGain", logData.Properties.VariableNames);
+        hasWaveformSpeedGain = ismember("WaveformSpeedGain", logData.Properties.VariableNames);
+        hasJump = ismember("JumpDiscontinuity", logData.Properties.VariableNames);
+        hasHapticsEdge = ismember("HapticsEdge", logData.Properties.VariableNames);
+        hasAffectMask = ismember("AffectMask", logData.Properties.VariableNames);
+        hasLeadInEpoch = ismember("LeadInEpoch", logData.Properties.VariableNames);
+
+        for k = 1:nTrials
+            rep = repVals(k);
+            idx = find(repAll == rep);
+            seg = logData(idx, :);
+
+            rows(k).Rep = rep;
+            rows(k).EnterTime = seg.Timestamp(1);
+            rows(k).ExitTime = seg.Timestamp(end);
+            rows(k).TrialDuration = seconds(seg.Timestamp(end) - seg.Timestamp(1));
+            rows(k).NFrames = height(seg);
+
+            if hasHits
+                dHits = diff(double(seg.Hits));
+                rows(k).HitCount = sum(max(0, dHits), 'omitnan');
+            else
+                rows(k).HitCount = NaN;
+            end
+
+            if hasMisses
+                dMiss = diff(double(seg.Misses));
+                rows(k).MissCount = sum(max(0, dMiss), 'omitnan');
+            else
+                rows(k).MissCount = NaN;
+            end
+
+            rows(k).MeanRMSE = computePacmanTrialRMSE(seg);
+
+            if hasColliderGain
+                rows(k).MeanColliderGain = mean(double(seg.ColliderGain), 'omitnan');
+            else
+                rows(k).MeanColliderGain = NaN;
+            end
+
+            if hasWaveformSpeedGain
+                rows(k).MeanWaveformSpeedGain = mean(double(seg.WaveformSpeedGain), 'omitnan');
+            else
+                rows(k).MeanWaveformSpeedGain = NaN;
+            end
+
+            if hasJump
+                rows(k).JumpCount = nnz(seg.JumpDiscontinuity > 0);
+            else
+                rows(k).JumpCount = 0;
+            end
+
+            if hasHapticsEdge
+                edge = uint8(seg.HapticsEdge);
+                rows(k).RisingEdgeCount = nnz(bitand(edge, uint8(1)) > 0);
+                rows(k).FallingEdgeCount = nnz(bitand(edge, uint8(2)) > 0);
+            else
+                rows(k).RisingEdgeCount = 0;
+                rows(k).FallingEdgeCount = 0;
+            end
+
+            if hasAffectMask
+                affect = uint8(seg.AffectMask);
+                rows(k).CryingFrameCount = nnz(bitand(affect, uint8(1)) > 0);
+                rows(k).HappyThoughtFrameCount = nnz(bitand(affect, uint8(2)) > 0);
+            else
+                rows(k).CryingFrameCount = 0;
+                rows(k).HappyThoughtFrameCount = 0;
+            end
+        end
+
+        trialTbl = struct2table(rows);
+        trialTbl = sortrows(trialTbl, "Rep");
+
+        leadMask = repAll == 0;
+        if hasLeadInEpoch
+            leadMask = leadMask | logical(logData.LeadInEpoch);
+        end
+
+        if any(leadMask)
+            leadSeg = logData(leadMask, :);
+            trialTbl.Properties.UserData.lead_in_start = leadSeg.Timestamp(1);
+            trialTbl.Properties.UserData.lead_in_end = leadSeg.Timestamp(end);
+            trialTbl.Properties.UserData.lead_in_duration_sec = seconds(leadSeg.Timestamp(end) - leadSeg.Timestamp(1));
+            trialTbl.Properties.UserData.lead_in_n_frames = height(leadSeg);
+        else
+            trialTbl.Properties.UserData.lead_in_start = NaT;
+            trialTbl.Properties.UserData.lead_in_end = NaT;
+            trialTbl.Properties.UserData.lead_in_duration_sec = 0;
+            trialTbl.Properties.UserData.lead_in_n_frames = 0;
+        end
+    end
+
+    function rmse = computePacmanTrialRMSE(seg)
+        rmse = NaN;
+        vars = seg.Properties.VariableNames;
+        hasPX = ismember("PacmanX", vars);
+        hasPY = ismember("PacmanY", vars);
+        hasTX = ismember("UpcomingPelletX", vars);
+        hasTY = ismember("UpcomingPelletY", vars);
+
+        if ~(hasPX && hasPY && hasTX && hasTY)
+            return;
+        end
+
+        n = height(seg);
+        if n < 2
+            return;
+        end
+
+        idx = (1:n)';
+        px = double(seg.PacmanX);
+        py = double(seg.PacmanY);
+        tx = double(seg.UpcomingPelletX);
+        ty = double(seg.UpcomingPelletY);
+
+        txi = interpolateFiniteSeries(tx, idx);
+        tyi = interpolateFiniteSeries(ty, idx);
+
+        good = isfinite(px) & isfinite(py) & isfinite(txi) & isfinite(tyi);
+        if ~any(good)
+            return;
+        end
+
+        d2 = (px(good) - txi(good)).^2 + (py(good) - tyi(good)).^2;
+        rmse = sqrt(mean(d2, 'omitnan'));
+    end
+
+    function yi = interpolateFiniteSeries(y, x)
+        yi = nan(size(y));
+        good = isfinite(y) & isfinite(x);
+        nGood = nnz(good);
+
+        if nGood == 0
+            return;
+        elseif nGood == 1
+            yi(:) = y(good);
+            return;
+        end
+
+        yi = interp1(x(good), y(good), x, 'linear', 'extrap');
     end
 end
 
